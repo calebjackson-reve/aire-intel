@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx tsc --noEmit)",
+      "Bash(npx tsc --noEmit *)",
+      "Bash(curl -s http://localhost:3000*)",
+      "Bash(curl -s 'http://localhost:3000*')",
+      "Bash(npx prisma generate)",
+      "mcp__Claude_Preview__preview_screenshot",
+      "mcp__Claude_Preview__preview_start",
+      "mcp__Claude_Preview__preview_resize",
+      "mcp__Claude_Preview__preview_console_logs",
+      "mcp__Claude_in_Chrome__list_connected_browsers",
+      "mcp__Claude_in_Chrome__tabs_context_mcp",
+      "mcp__ccd_session__mark_chapter"
+    ]
+  }
+}

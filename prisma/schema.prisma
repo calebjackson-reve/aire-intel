@@ -1,0 +1,395 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Lead {
+  id              String    @id @default(cuid())
+  // Identity
+  name            String
+  firstName       String?
+  lastName        String?
+  phone           String?
+  email           String?
+  // Pipeline
+  stage           String    @default("new_lead")
+  type            String    @default("buyer")   // buyer | seller | both | investor | referral
+  pricePoint      Float?
+  priceMin        Float?
+  priceMax        Float?
+  // Property interest
+  address         String?
+  beds            Int?
+  baths           Float?
+  sqftMin         Int?
+  sqftMax         Int?
+  areas           String?   // comma-separated neighborhoods/parishes
+  // Context
+  motivation      String?
+  timeline        String?   // immediate | 1-3mo | 3-6mo | 6-12mo | 12mo+
+  preApproved     Boolean   @default(false)
+  preApprovalAmt  Float?
+  referredBy      String?
+  source          String?
+  tags            String?   // comma-separated
+  // Follow-up
+  lastContactDate DateTime?
+  nextActionDate  DateTime?
+  nextActionNote  String?
+  assignedTo      String?
+  // Contract dates — populated when stage transitions to under_contract.
+  // contractDate = date the offer was accepted / contract executed.
+  // closingDate  = scheduled closing date. Used to auto-generate milestone tasks
+  //                (inspection +7d, appraisal +14d, final walk -2d, closing).
+  contractDate    DateTime?
+  closingDate     DateTime?
+  // Lofty import fields
+  loftyId         String?   @unique
+  // Social handles (manual entry, friend-list match, or AI suggestion)
+  instagramHandle String?
+  facebookUrl     String?   // full URL or "facebook.com/username" — supports vanity + numeric profiles
+  facebookName    String?   // display name as it appeared in friends export (helps re-match)
+  linkedinUrl     String?
+  tiktokHandle    String?
+  twitterHandle   String?
+  // Meta
+  notes           String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  timeline_logs    ContactLog[]
+  posts            GeneratedPost[]
+  tasks            Task[]
+  smartPlans       SmartPlanEnrollment[]
+  buyerSearches    BuyerSearch[]
+  loops            DotloopLoop[]
+  linkedInOutreach LinkedInOutreach[]
+  messageDrafts    MessageDraft[]
+  propertyIntel    PropertyIntel?
+}
+
+// Homeowner / property attributes imported from a PropStream CSV export (the only
+// in-bounds PropStream path — see docs/intent-data-legal.md). One row per lead;
+// used ONLY as a marketing-prioritization input for the sell-intent score, never
+// for any FCRA credit/eligibility decision.
+model PropertyIntel {
+  id             String    @id @default(cuid())
+  leadId         String    @unique
+  // Core sell-intent attributes
+  equityPct      Float? // estimated equity as % of value (0..100)
+  estimatedValue Float?
+  ownershipYears Float? // tenure since last sale
+  lastSaleDate   DateTime?
+  ownerOccupied  Boolean? // null = unknown
+  absentee       Boolean? // owner mailing addr ≠ property addr
+  preForeclosure Boolean?
+  propertyType   String?
+  siteAddress    String?
+  // Provenance
+  source     String   @default("propstream")
+  raw        String? // original CSV row as JSON, for audit
+  importedAt DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  lead Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+}
+
+/**
+ * A Dotloop transaction "loop" mirrored into AIRE.
+ *
+ * Most transactional fact lives in Dotloop (signatures, docs, deadlines).
+ * This local copy is a lightweight pointer so the AIRE contact profile can
+ * show loop status at a glance and link out to Dotloop for the full file.
+ * Synced via /api/dotloop/sync — idempotent by dotloopId.
+ */
+model DotloopLoop {
+  id            String    @id @default(cuid())
+  dotloopId     String    @unique // Dotloop's numeric loop ID
+  leadId        String?
+  lead          Lead?     @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  name          String
+  status        String    // PRE_OFFER | UNDER_CONTRACT | SOLD | LEASED | etc.
+  loopType      String?   // PURCHASE | LISTING_FOR_LEASE | LISTING_FOR_SALE | etc.
+  streetAddress String?
+  city          String?
+  state         String?
+  zipCode       String?
+  // Money + dates pulled into local copy so dashboard widgets don't re-fetch every render
+  acceptanceDate DateTime?
+  closingDate   DateTime?
+  expectedClosingDate DateTime?
+  contractDate  DateTime?
+  salePrice     Float?
+  commission    Float?
+  // Participant snapshot — JSON because shape varies (buyer agent, seller agent, lender, etc.)
+  participantsJson String? // JSON array of { name, role, email, phone }
+  // Cached counts for fast UI rendering
+  signedDocsCount   Int @default(0)
+  pendingDocsCount  Int @default(0)
+  // Sync bookkeeping
+  lastSyncedAt  DateTime  @default(now())
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model ContactLog {
+  id        String   @id @default(cuid())
+  leadId    String
+  lead      Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  method    String   // text | call | email | showing | meeting | note | ai_message
+  note      String?
+  direction String   @default("outbound") // inbound | outbound
+  createdAt DateTime @default(now())
+}
+
+model Task {
+  id          String    @id @default(cuid())
+  leadId      String?
+  lead        Lead?     @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  title       String
+  description String?
+  dueDate     DateTime?
+  priority    String    @default("normal") // urgent | high | normal | low
+  done        Boolean   @default(false)
+  doneAt      DateTime?
+  assignedTo  String?
+  createdAt   DateTime  @default(now())
+}
+
+model SmartPlan {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  triggerType String   // new_lead | stage_change | no_contact | manual
+  steps       String   // JSON array of steps
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  enrollments SmartPlanEnrollment[]
+}
+
+model SmartPlanEnrollment {
+  id          String    @id @default(cuid())
+  leadId      String
+  lead        Lead      @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  planId      String
+  plan        SmartPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  currentStep Int       @default(0)
+  active      Boolean   @default(true)
+  startedAt   DateTime  @default(now())
+  nextStepAt  DateTime?
+}
+
+model GeneratedPost {
+  id         String   @id @default(cuid())
+  leadId     String?
+  lead       Lead?    @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  postType   String
+  address    String?
+  price      Float?
+  rawNotes   String?
+  caption    String?
+  slideCopy  String?
+  motionSpec String?
+  platform   String   @default("instagram")
+  approved   Boolean  @default(false)
+  createdAt  DateTime @default(now())
+}
+
+model DailyBrief {
+  id        String   @id @default(cuid())
+  content   String
+  date      DateTime @default(now())
+}
+
+model BuyerSearch {
+  id          String   @id @default(cuid())
+  leadId      String?
+  lead        Lead?    @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  name        String   // "The Joneses – Gardere $350K"
+  priceMin    Float?
+  priceMax    Float?
+  bedsMin     Int?
+  bathsMin    Float?
+  sqftMin     Int?
+  areas       String?  // comma-separated zip codes / neighborhoods
+  propertyTypes String? // comma-separated: residential,condo,land
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  alerts      ListingAlert[]
+}
+
+model ListingAlert {
+  id            String      @id @default(cuid())
+  buyerSearchId String
+  buyerSearch   BuyerSearch @relation(fields: [buyerSearchId], references: [id], onDelete: Cascade)
+  mlsNumber     String
+  address       String
+  price         Float
+  beds          Int?
+  baths         Float?
+  sqft          Int?
+  photoUrl      String?
+  listingUrl    String?
+  listedAt      DateTime    @default(now())
+  seen          Boolean     @default(false)
+  emailed       Boolean     @default(false)
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  type      String   // listing_match | lead_assigned | task_due | sync_complete | social_post
+  title     String
+  body      String?
+  href      String?
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model SocialConnection {
+  id           String   @id @default(cuid())
+  platform     String   @unique // facebook | instagram
+  accessToken  String
+  pageId       String?
+  pageName     String?
+  expiresAt    DateTime?
+  connectedAt  DateTime @default(now())
+}
+
+// Karpathy-style error memory: every failure is logged, attributed, and tracked to resolution
+model ErrorLog {
+  id         String   @id @default(cuid())
+  type       String   // api_failure | validation | sync | ui | ai | lofty | paragon | meta
+  source     String   // which route/component/function
+  message    String
+  context    String?  // JSON: what was happening when it failed
+  stack      String?
+  attempts   Int      @default(1)
+  resolved   Boolean  @default(false)
+  resolution String?  // what fixed it
+  resolvedAt DateTime?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model Setting {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
+model ScheduledPost {
+  id           String   @id @default(cuid())
+  platform     String   // facebook | instagram | both
+  caption      String
+  imageUrl     String?
+  scheduledFor DateTime?
+  publishedAt  DateTime?
+  status       String   @default("draft") // draft | scheduled | published | failed
+  postId       String?  // platform post ID after publish
+  leadId       String?
+  createdAt    DateTime @default(now())
+}
+
+model Deal {
+  id            String    @id @default(cuid())
+  leadId        String?
+  // Property
+  address       String
+  city          String?
+  // Money
+  salePrice     Float
+  commission    Float     // dollar amount, not percent
+  commissionPct Float?    // percentage rate at closing (e.g. 2.5)
+  // Side + status
+  side          String    // buyer | seller | both
+  status        String    @default("closed") // pending | closed | fell_through
+  // Dates
+  contractDate  DateTime?
+  closingDate   DateTime
+  // Attribution
+  source        String?   // manual | lofty | paragon
+  notes         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+/**
+ * A dead-lead revival experiment cohort.
+ *
+ * Proof framework: a cohort is a frozen snapshot of dead leads (90+ days old,
+ * stage new_lead/active, zero inbound ContactLog ever) split into a treatment
+ * arm (gets voice-matched revival drafts) and a holdout arm (~20%, no outreach).
+ * baselineRate is captured at creation so every later result is measured against
+ * the historical revival rate. Outcomes are read live by joining leadIds back to
+ * ContactLog (inbound replies) and Lead.stage advancement.
+ */
+model RevivalCohort {
+  id           String   @id @default(cuid())
+  name         String
+  createdAt    DateTime @default(now())
+  leadIds      String   // JSON array of treatment-arm lead ids
+  holdoutIds   String   @default("[]") // JSON array of holdout-arm lead ids (no outreach)
+  baselineRate Float?   // historical revival rate captured at cohort creation
+  notes        String?
+}
+
+// A communication-agent draft awaiting Caleb's approval. Drafts are NEVER auto-sent
+// (TCPA-safe). Approving one fires the existing SMS/email path, writes a ContactLog,
+// and — if linked to a cohort — counts toward provable revival outcomes.
+model MessageDraft {
+  id        String    @id @default(cuid())
+  leadId    String
+  channel   String // "text" | "email"
+  subject   String? // email only
+  body      String
+  status    String    @default("pending") // pending | approved | sent | dismissed
+  source    String // "revival" | "followup" | "manual"
+  cohortId  String? // links to RevivalCohort for proof
+  createdAt DateTime  @default(now())
+  sentAt    DateTime?
+
+  lead Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@index([leadId])
+  @@index([cohortId])
+}
+
+model Goal {
+  id          String   @id @default(cuid())
+  metric      String   @unique // gci_annual | volume_annual | units_annual | leads_monthly
+  targetValue Float
+  period      String   // year | quarter | month
+  year        Int
+  notes       String?
+  updatedAt   DateTime @updatedAt
+}
+
+/**
+ * LinkedIn manual-assist outreach queue.
+ *
+ * Caleb generates a message in AIRE, copies it with one click, pastes it
+ * manually on LinkedIn. No LinkedIn OAuth / API — zero ToS risk.
+ *
+ * Status flow: message_generated → copied → sent
+ */
+model LinkedInOutreach {
+  id          String    @id @default(cuid())
+  leadId      String
+  lead        Lead      @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  message     String
+  status      String    @default("message_generated") // message_generated | copied | sent
+  generatedAt DateTime  @default(now())
+  copiedAt    DateTime?
+  sentAt      DateTime?
+  notes       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
