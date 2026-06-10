@@ -47,10 +47,10 @@ LOOPS=(
 )
 
 for SLUG in "${LOOPS[@]}"; do
-  SCAFFOLD="loops/scaffolds/$SLUG"
+  SCAFFOLD="loops/active/$SLUG"
 
   if [[ ! -d "$SCAFFOLD" ]]; then
-    log "SKIP  $SLUG (scaffold missing)"
+    log "SKIP  $SLUG (active dir missing)"
     echo "$SLUG SKIP —" >> "$STATUS_FILE"
     continue
   fi
@@ -109,7 +109,7 @@ separator
   echo "Check \`vercel.json\` for all cron paths added by loops."
   echo ""
   echo "## Oracle Status"
-  echo "Check \`loops/scaffolds/<slug>/build.log\` for per-loop typecheck/build output."
+  echo "Check \`loops/active/<slug>/loop.log\` for per-loop typecheck/build output."
 } > "$SUMMARY"
 
 cat "$SUMMARY" | tee -a "$LOGFILE"
