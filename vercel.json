@@ -14,6 +14,7 @@
     { "path": "/api/agents/coverage-ratchet",      "schedule": "0 7 * * 6"   },
     { "path": "/api/agents/sphere-reactivation",   "schedule": "0 14 1 * *"  },
     { "path": "/api/agents/intent-revival",         "schedule": "0 13 * * 3"  },
-    { "path": "/api/agents/health-check",           "schedule": "30 11 * * *" }
+    { "path": "/api/agents/health-check",           "schedule": "30 11 * * *" },
+    { "path": "/api/agents/audit-debt",             "schedule": "0 7 * * 0"   }
   ]
 }
