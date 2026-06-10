@@ -7,6 +7,8 @@ import { matchListingToBuyers, type BuyerSearchWithLead } from "@/lib/buyer-matc
 import { fetchActiveListings, type ParagonListing } from "@/lib/paragon"; // AIRE: loop:listing-alert-buyer-match
 import { getSetting, invalidateSettingsCache, getParagonConfig } from "@/lib/settings"; // AIRE: loop:listing-alert-buyer-match
 import { logError } from "@/lib/error-memory"; // AIRE: loop:listing-alert-buyer-match
+import { checkTokenExpiry } from "@/lib/meta"; // AIRE: loop:meta-token-refresh-alert
+import { getTwilioConfig, sendSMS } from "@/lib/twilio"; // AIRE: loop:meta-token-refresh-alert
 
 // Market Intelligence Agent — runs at 3:00 AM CT (09:00 UTC) via Vercel cron
 // 1. Fetch Zillow viral listings → store in ZillowHotListing
@@ -33,6 +35,77 @@ async function runMarketIntel() {
   let actionsQueued = 0;
 
   try {
+    // --- 0. Meta token expiry check --- AIRE: loop:meta-token-refresh-alert
+    try {
+      const lastChecked = await getSetting("meta.token.lastChecked");
+      const lastCheckedMs = lastChecked ? new Date(lastChecked).getTime() : 0;
+      const stale = isNaN(lastCheckedMs) || Date.now() - lastCheckedMs > 23 * 60 * 60 * 1000;
+      if (stale) {
+        const { daysRemaining, expiresAt } = await checkTokenExpiry();
+        const now = new Date().toISOString();
+
+        await prisma.setting.upsert({
+          where: { key: "meta.token.lastChecked" },
+          create: { key: "meta.token.lastChecked", value: now },
+          update: { value: now },
+        });
+        if (expiresAt) {
+          await prisma.setting.upsert({
+            where: { key: "meta.token.expiresAt" },
+            create: { key: "meta.token.expiresAt", value: expiresAt.toISOString() },
+            update: { value: expiresAt.toISOString() },
+          });
+        }
+
+        const tokenStatus = daysRemaining <= 0 ? "expired" : daysRemaining <= 7 ? "critical" : daysRemaining <= 14 ? "warning" : "healthy";
+        await prisma.setting.upsert({
+          where: { key: "meta.token.status" },
+          create: { key: "meta.token.status", value: tokenStatus },
+          update: { value: tokenStatus },
+        });
+        invalidateSettingsCache(["meta.token.lastChecked", "meta.token.expiresAt", "meta.token.status"]);
+
+        if (daysRemaining <= 0) {
+          await prisma.setting.upsert({
+            where: { key: "agent.content_scheduler.paused" },
+            create: { key: "agent.content_scheduler.paused", value: "true" },
+            update: { value: "true" },
+          });
+          invalidateSettingsCache(["agent.content_scheduler.paused"]);
+          await prisma.notification.create({
+            data: {
+              type: "critical",
+              title: "Meta token expired — content scheduler paused",
+              body: "Your Meta Page access token has expired. All queued posts are paused until you refresh it in /settings.",
+              href: "/settings",
+            },
+          });
+          await sendMetaSmsAlert(daysRemaining, expiresAt);
+        } else if (daysRemaining <= 7) {
+          await prisma.notification.create({
+            data: {
+              type: "warning",
+              title: `Meta token expires in ${daysRemaining} day${daysRemaining !== 1 ? "s" : ""} — refresh now`,
+              body: `Token expires on ${expiresAt?.toDateString() ?? "soon"}. Refresh in /settings before it expires.`,
+              href: "/settings",
+            },
+          });
+          await sendMetaSmsAlert(daysRemaining, expiresAt);
+        } else if (daysRemaining <= 14) {
+          await prisma.notification.create({
+            data: {
+              type: "warning",
+              title: `Meta token expires in ${daysRemaining} days — refresh soon`,
+              body: `Token expires on ${expiresAt?.toDateString() ?? "soon"}. Refresh in /settings before the 7-day window.`,
+              href: "/settings",
+            },
+          });
+        }
+      }
+    } catch (err) {
+      errors.push({ step: "meta_token_check", error: String(err) });
+    }
+
     // --- 1. Zillow viral listings ---
     let viralListings: Awaited<ReturnType<typeof fetchViralListings>> = [];
 
@@ -331,6 +404,34 @@ Caption only, no preamble.`,
 
   const data = await res.json() as { content: Array<{ type: string; text: string }> };
   return data.content.find((b) => b.type === "text")?.text?.trim() ?? "";
+}
+
+// AIRE: loop:meta-token-refresh-alert
+async function sendMetaSmsAlert(daysRemaining: number, expiresAt?: Date | null) {
+  try {
+    const [lastSms, twilioConfig, calebPhone] = await Promise.all([
+      getSetting("meta.token.lastSmsSent"),
+      getTwilioConfig(),
+      getSetting("CALEB_PHONE"),
+    ]);
+    if (!twilioConfig || !calebPhone) return;
+    if (lastSms && !isNaN(new Date(lastSms).getTime()) && Date.now() - new Date(lastSms).getTime() < 24 * 60 * 60 * 1000) return;
+
+    const message = daysRemaining <= 0
+      ? "AIRE ALERT: Meta token expired. Queued posts paused. Refresh at /settings."
+      : `AIRE ALERT: Meta token expires in ${daysRemaining} day${daysRemaining !== 1 ? "s" : ""}${expiresAt ? ` on ${expiresAt.toDateString()}` : ""}. Refresh in /settings.`;
+
+    await sendSMS(calebPhone, message, twilioConfig);
+    const sentAt = new Date().toISOString();
+    await prisma.setting.upsert({
+      where: { key: "meta.token.lastSmsSent" },
+      create: { key: "meta.token.lastSmsSent", value: sentAt },
+      update: { value: sentAt },
+    });
+    invalidateSettingsCache(["meta.token.lastSmsSent"]);
+  } catch {
+    // SMS failure never crashes the agent
+  }
 }
 
 // AIRE: loop:listing-alert-buyer-match

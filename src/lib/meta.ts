@@ -1,5 +1,5 @@
 import { getMetaConfig } from "./settings";
-import { withRetry } from "./error-memory";
+import { withRetry, logError } from "./error-memory";
 
 const GRAPH_BASE = "https://graph.facebook.com/v19.0";
 
@@ -80,3 +80,37 @@ export async function publishToInstagram(caption: string, imageUrl: string): Pro
 }
 
 // TODO: Wire these functions into src/app/api/social/route.ts replacing any placeholder logic.
+
+// AIRE: loop:meta-token-refresh-alert
+export async function checkTokenExpiry(): Promise<{ daysRemaining: number; expiresAt: Date | null }> {
+  const token = process.env.META_PAGE_ACCESS_TOKEN;
+  const appId = process.env.META_APP_ID;
+  const appSecret = process.env.META_APP_SECRET;
+
+  if (!token || !appId || !appSecret) {
+    await logError("meta", "meta/checkTokenExpiry", new Error("Missing META env vars for token expiry check"), {});
+    return { daysRemaining: 999, expiresAt: null };
+  }
+
+  try {
+    const result = await withRetry(async () => {
+      const appToken = `${appId}|${appSecret}`;
+      const url = `${GRAPH_BASE}/debug_token?input_token=${encodeURIComponent(token)}&access_token=${encodeURIComponent(appToken)}`;
+      const res = await fetch(url, { signal: AbortSignal.timeout(10_000) });
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => ({})) as { error?: { message?: string } };
+        throw new Error(`Meta debug_token ${res.status}: ${errBody.error?.message ?? res.statusText}`);
+      }
+      return res.json() as Promise<{ data: { expires_at?: number; is_valid?: boolean } }>;
+    }, { source: "meta/checkTokenExpiry", type: "meta" });
+
+    const expiresAt = result.data.expires_at ? new Date(result.data.expires_at * 1000) : null;
+    if (!expiresAt) return { daysRemaining: 999, expiresAt: null };
+
+    const daysRemaining = Math.floor((expiresAt.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+    return { daysRemaining, expiresAt };
+  } catch {
+    // withRetry already logged; fail-open so the agent continues
+    return { daysRemaining: 999, expiresAt: null };
+  }
+}
