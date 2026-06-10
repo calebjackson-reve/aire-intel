@@ -21,6 +21,8 @@
     { "path": "/api/agents/goal-pacing",             "schedule": "0 13 * * 1"  },
     { "path": "/api/agents/content-learning",        "schedule": "0 5 * * 0"   },
     { "path": "/api/agents/revival-tracker",         "schedule": "30 13 * * 1" },
-    { "path": "/api/agents/meta-discovery",           "schedule": "0 5 28 * *"  }
+    { "path": "/api/agents/meta-discovery",           "schedule": "0 5 28 * *"  },
+    { "path": "/api/cron/render-poll",                "schedule": "*/5 * * * *"  },
+    { "path": "/api/agents/phase-b-eval",             "schedule": "0 15 15 * *"  }
   ]
 }
