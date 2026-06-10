@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import Sidebar from "@/components/Sidebar";
 import Topbar from "@/components/Topbar";
-import AIAssistant from "@/components/AIAssistant";
+import JarvisBar from "@/components/JarvisBar";
 import CommandPalette from "@/components/CommandPalette";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ToastProvider } from "@/components/ui/Toast";
@@ -13,7 +13,6 @@ export const metadata: Metadata = {
   description: "Operations platform for Caleb Jackson at Rêve Realtors®",
 };
 
-// Google Fonts loaded here (not in CSS) to avoid Tailwind v4 @import ordering issue
 export function generateStaticParams() { return []; }
 
 export default function RootLayout({
@@ -32,16 +31,17 @@ export default function RootLayout({
       <body className="min-h-full">
         <ToastProvider>
           <Sidebar />
-          {/* Content area — 236px sidebar clearance (64px when collapsed under 900px) */}
+          {/* Content area — 236px sidebar clearance */}
           <div className="aire-content" style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
             <Topbar />
             <main style={{ flex: 1 }}>
               <ErrorBoundary source="app-shell">{children}</ErrorBoundary>
             </main>
           </div>
-          {/* Global Cmd+K command palette — available on every page */}
+          {/* Cmd+K palette */}
           <CommandPalette />
-          <AIAssistant />
+          {/* AIRE Jarvis — always-on AI bar, bottom of every page */}
+          <JarvisBar />
           <PushSetup />
         </ToastProvider>
       </body>
