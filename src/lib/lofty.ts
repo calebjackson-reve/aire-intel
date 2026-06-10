@@ -1,3 +1,5 @@
+import { withRetry } from "./error-memory";
+
 const LOFTY_BASE = "https://api.lofty.com";
 const LOFTY_TOKEN_URL = "https://api.lofty.com/oauth/token";
 
@@ -336,4 +338,46 @@ export function mapLoftyLeadToAire(l: LoftyLead) {
     lastContactDate: parseLoftyDate(l.lastTouch) ?? undefined,
     referredBy: l.referredBy || undefined,
   };
+}
+
+// AIRE: loop:lofty-sync-health
+export async function checkLoftyHealth(): Promise<{
+  status: "ok" | "auth_expired" | "unreachable";
+  message: string;
+  responseMs: number;
+}> {
+  const creds = getLoftyCredentials();
+  if (!creds) {
+    return { status: "auth_expired", message: "Lofty credentials not configured", responseMs: 0 };
+  }
+
+  const start = Date.now();
+  try {
+    await withRetry(
+      async () => {
+        const token = await getLoftyAccessToken(creds);
+        const res = await fetch(`${LOFTY_BASE}/v1.0/leads?limit=1&sort=lastUpdateTime&desc=true`, {
+          headers: loftyHeaders(token),
+          signal: AbortSignal.timeout(5_000),
+        });
+        if (!res.ok) {
+          const text = await res.text().catch(() => "");
+          throw Object.assign(
+            new Error(`Lofty ${res.status}: ${text || res.statusText}`),
+            { httpStatus: res.status },
+          );
+        }
+      },
+      { maxAttempts: 2, source: "lofty-health", type: "lofty" },
+    );
+    return { status: "ok", message: "Lofty API reachable", responseMs: Date.now() - start };
+  } catch (err) {
+    const responseMs = Date.now() - start;
+    const msg = err instanceof Error ? err.message : String(err);
+    if ((err as { httpStatus?: number }).httpStatus === 401 || msg.includes("401")) {
+      _cachedToken = null;
+      return { status: "auth_expired", message: "Lofty token expired — re-authenticate", responseMs };
+    }
+    return { status: "unreachable", message: msg, responseMs };
+  }
 }
