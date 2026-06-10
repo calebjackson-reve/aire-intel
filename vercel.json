@@ -10,6 +10,7 @@
     { "path": "/api/agents/transaction-watchdog", "schedule": "0 12 * * *" },
     { "path": "/api/agents/revival",              "schedule": "0 1 * * *"  },
     { "path": "/api/cron/meeting-followup",        "schedule": "*/15 * * * *" },
-    { "path": "/api/agents/error-autofix",         "schedule": "0 7 * * *"   }
+    { "path": "/api/agents/error-autofix",         "schedule": "0 7 * * *"   },
+    { "path": "/api/agents/coverage-ratchet",      "schedule": "0 7 * * 6"   }
   ]
 }
