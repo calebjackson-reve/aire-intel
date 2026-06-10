@@ -239,6 +239,94 @@ async function runWatchdog() {
       errors.push({ step: "sync_freshness", error: String(err) });
     }
 
+    // 4. SmartPlan enrollment decay pass — flag enrollments stalled >48h
+    // AIRE: loop:smart-plan-enrollment-decay
+    let stalledEnrollmentCount = 0;
+    try {
+      const fortyEightHoursAgo = new Date(now.getTime() - 48 * 60 * 60 * 1000);
+
+      const totalActive = await prisma.smartPlanEnrollment.count({
+        where: { active: true },
+      });
+
+      const stalledEnrollments = await prisma.smartPlanEnrollment.findMany({
+        where: {
+          active: true,
+          nextStepAt: { not: null, lt: fortyEightHoursAgo },
+        },
+        include: { lead: true, plan: true },
+        take: 20,
+        orderBy: { nextStepAt: "asc" },
+      });
+
+      stalledEnrollmentCount = stalledEnrollments.length;
+
+      for (const enrollment of stalledEnrollments) {
+        itemsProcessed++;
+        try {
+          const existing = await prisma.actionQueue.findFirst({
+            where: {
+              leadId: enrollment.leadId,
+              type: "create_lofty_task",
+              agentType: "smart_plan_watchdog",
+              status: "pending",
+            },
+          });
+          if (existing) continue;
+
+          const staleHours = Math.floor(
+            (now.getTime() - (enrollment.nextStepAt?.getTime() ?? 0)) / (60 * 60 * 1000),
+          );
+
+          await prisma.actionQueue.create({
+            data: {
+              type: "create_lofty_task",
+              agentType: "smart_plan_watchdog",
+              leadId: enrollment.leadId,
+              priority: 4,
+              briefDate: today,
+              requiresApproval: true,
+              payload: {
+                enrollmentId: enrollment.id,
+                leadId: enrollment.leadId,
+                leadName: enrollment.lead?.name ?? "Unknown",
+                planId: enrollment.planId,
+                planName: enrollment.plan?.name ?? "Unknown Plan",
+                currentStep: enrollment.currentStep,
+                staleHours,
+                title: `[SmartPlan] Stalled: ${enrollment.lead?.name ?? "Unknown"} — Step ${enrollment.currentStep} overdue ${staleHours}h`,
+              },
+            },
+          });
+          actionsQueued++;
+        } catch (err) {
+          await logError("api_failure", "transaction-watchdog/enrollment-decay", err, {
+            enrollmentId: enrollment.id,
+          });
+        }
+      }
+
+      // Alert Caleb if >30% of active enrollments are stalled (likely executor failure)
+      if (totalActive > 0 && stalledEnrollmentCount / totalActive > 0.3) {
+        await prisma.notification.create({
+          data: {
+            type: "warning",
+            title: `SmartPlan alert: ${stalledEnrollmentCount}/${totalActive} enrollments stalled`,
+            body: `${Math.round((stalledEnrollmentCount / totalActive) * 100)}% of active SmartPlan enrollments are overdue >48h — possible executor failure.`,
+            href: "/smart-plans",
+          },
+        });
+      }
+
+      await prisma.setting.upsert({
+        where: { key: "smartplan.stalledCount" },
+        update: { value: String(stalledEnrollmentCount) },
+        create: { key: "smartplan.stalledCount", value: String(stalledEnrollmentCount) },
+      });
+    } catch (err) {
+      errors.push({ step: "enrollment_decay", error: String(err) });
+    }
+
     await finishRun(runId, { itemsProcessed, actionsQueued, errorLog: errors });
 
     return Response.json({
@@ -248,6 +336,7 @@ async function runWatchdog() {
       actionsQueued,
       loopsScanned: activeLoops.length,
       contractLeadsScanned: contractLeads.length,
+      stalledEnrollments: stalledEnrollmentCount,
     });
   } catch (err) {
     await failRun(runId, err);
