@@ -56,6 +56,8 @@ export interface ParagonListing {
   daysOnMarket: number;
   yearBuilt: number;
   modifiedAt: string;        // RESO ModificationTimestamp — used for incremental sync
+  listingAgent: string;      // RESO ListAgentFullName
+  originalListPrice: number; // RESO OriginalListPrice — for price reduction detection
 }
 
 /** Alias for callers who prefer the shorter name. */
@@ -64,12 +66,15 @@ export type Listing = ParagonListing;
 /** Filter options for `fetchActiveListings`. */
 export interface ListingFilter {
   city?: string;
+  zip?: string;        // RESO PostalCode
   minPrice?: number;
   maxPrice?: number;
   beds?: number;       // minimum bedroom count
   limit?: number;      // OData $top (default 50)
   /** Override the default `StandardStatus eq 'Active'` — pass "" to drop the status filter entirely. */
   status?: string;
+  /** ISO timestamp — only return listings where ModificationTimestamp >= this value. OData v4 DateTimeOffset. */
+  changedSince?: string;
 }
 
 // ─── Field mapping (RESO Data Dictionary → AIRE shape) ───────────────────────
@@ -132,6 +137,12 @@ function mapListing(raw: Record<string, unknown>): ParagonListing {
     yearBuilt: Number(raw["YearBuilt"] ?? 0) || 0,
     photos,
     imageUrl,
+    listingAgent: String(
+      raw["ListAgentFullName"] ??
+      [raw["ListAgentFirstName"], raw["ListAgentLastName"]].filter(Boolean).join(" ") ??
+      ""
+    ),
+    originalListPrice: Number(raw["OriginalListPrice"] ?? 0) || 0,
   };
 }
 
@@ -156,6 +167,9 @@ function buildFilter(opts: ListingFilter = {}): string {
   if (opts.city) {
     clauses.push(`City eq '${escapeODataString(opts.city)}'`);
   }
+  if (opts.zip) {
+    clauses.push(`PostalCode eq '${escapeODataString(opts.zip)}'`);
+  }
   if (typeof opts.minPrice === "number" && Number.isFinite(opts.minPrice)) {
     clauses.push(`ListPrice ge ${Math.round(opts.minPrice)}`);
   }
@@ -164,6 +178,10 @@ function buildFilter(opts: ListingFilter = {}): string {
   }
   if (typeof opts.beds === "number" && Number.isFinite(opts.beds)) {
     clauses.push(`BedroomsTotal ge ${Math.round(opts.beds)}`);
+  }
+  if (opts.changedSince) {
+    // OData v4 DateTimeOffset literal — no quotes needed
+    clauses.push(`ModificationTimestamp ge ${opts.changedSince}`);
   }
 
   return clauses.join(" and ");
