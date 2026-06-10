@@ -3,6 +3,10 @@ import { fetchViralListings, viralScore } from "@/lib/zillow";
 import { verifyCronSecret, cronUnauthorized } from "@/lib/cron-auth";
 import { startRun, finishRun, failRun } from "@/lib/agent-run";
 import { getTodayCT } from "@/lib/brief-date";
+import { matchListingToBuyers, type BuyerSearchWithLead } from "@/lib/buyer-matcher"; // AIRE: loop:listing-alert-buyer-match
+import { fetchActiveListings, type ParagonListing } from "@/lib/paragon"; // AIRE: loop:listing-alert-buyer-match
+import { getSetting, invalidateSettingsCache, getParagonConfig } from "@/lib/settings"; // AIRE: loop:listing-alert-buyer-match
+import { logError } from "@/lib/error-memory"; // AIRE: loop:listing-alert-buyer-match
 
 // Market Intelligence Agent — runs at 3:00 AM CT (09:00 UTC) via Vercel cron
 // 1. Fetch Zillow viral listings → store in ZillowHotListing
@@ -166,6 +170,109 @@ async function runMarketIntel() {
       actionsQueued++;
     }
 
+    // --- 5. Buyer match pass (BuyerSearch × Paragon listings) --- AIRE: loop:listing-alert-buyer-match
+    try {
+      const lastRunDate = await getSetting("buyermatch.lastRunDate");
+      if (lastRunDate !== today) {
+        const maxAlertsRaw = await getSetting("buyer_match.maxAlertsPerRun");
+        const maxAlerts = maxAlertsRaw ? parseInt(maxAlertsRaw, 10) : 5;
+
+        const paragonConfig = await getParagonConfig();
+        const paragonListings = paragonConfig
+          ? await fetchActiveListings(paragonConfig, { limit: 50 })
+          : [];
+
+        // Filter to new/price-changed in last 24h
+        const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
+        const recentListings = paragonListings.filter((l) => {
+          if (!l.modifiedAt) return true;
+          const mod = new Date(l.modifiedAt);
+          return !isNaN(mod.getTime()) && mod >= cutoff;
+        });
+
+        let buyerAlertsQueued = 0;
+        const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+        const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+        for (const listing of recentListings) {
+          if (buyerAlertsQueued >= maxAlerts) break;
+
+          let matches: BuyerSearchWithLead[];
+          try {
+            matches = await matchListingToBuyers(listing);
+          } catch (err) {
+            logError("api_failure", "market-intel/buyer-match", err as Error, { mlsId: listing.mlsNumber });
+            continue;
+          }
+
+          for (const buyer of matches) {
+            if (buyerAlertsQueued >= maxAlerts) break;
+            if (!buyer.leadId) continue;
+
+            // Dedup 1: ActionQueue — same leadId + mlsId in last 7 days
+            const recentActions = await prisma.actionQueue.findMany({
+              where: {
+                leadId: buyer.leadId,
+                agentType: "market_intel",
+                type: "draft_message",
+                createdAt: { gte: sevenDaysAgo },
+              },
+              select: { payload: true },
+            });
+            const alreadyQueued = recentActions.some(
+              (a) => (a.payload as { mlsId?: string }).mlsId === listing.mlsNumber
+            );
+            if (alreadyQueued) continue;
+
+            // Dedup 2: ContactLog — outbound contact for same lead in last 24h
+            const recentContact = await prisma.contactLog.findFirst({
+              where: {
+                leadId: buyer.leadId,
+                direction: "outbound",
+                createdAt: { gte: oneDayAgo },
+              },
+            });
+            if (recentContact) continue;
+
+            await prisma.actionQueue.create({
+              data: {
+                type: "draft_message",
+                agentType: "market_intel",
+                leadId: buyer.leadId,
+                priority: 3,
+                briefDate: today,
+                requiresApproval: true,
+                payload: {
+                  leadId: buyer.leadId,
+                  leadName: buyer.lead?.name ?? "",
+                  mlsId: listing.mlsNumber,
+                  listingAddress: listing.address,
+                  listingPrice: listing.price,
+                  listingBeds: listing.beds,
+                  listingBaths: listing.baths,
+                  matchReason: buildBuyerMatchReason(listing, buyer),
+                  draftBody: `New listing at ${listing.address} — ${listing.beds}bd/${listing.baths}ba $${listing.price.toLocaleString()} — matches what you're looking for. Want to schedule a showing?`,
+                },
+              },
+            });
+            buyerAlertsQueued++;
+            actionsQueued++;
+          }
+        }
+
+        itemsProcessed += recentListings.length;
+
+        await prisma.setting.upsert({
+          where: { key: "buyermatch.lastRunDate" },
+          create: { key: "buyermatch.lastRunDate", value: today },
+          update: { value: today },
+        });
+        invalidateSettingsCache(["buyermatch.lastRunDate"]);
+      }
+    } catch (err) {
+      errors.push({ step: "buyer_match", error: String(err) });
+    }
+
     await finishRun(runId, { itemsProcessed, actionsQueued, errorLog: errors });
 
     return Response.json({
@@ -224,4 +331,17 @@ Caption only, no preamble.`,
 
   const data = await res.json() as { content: Array<{ type: string; text: string }> };
   return data.content.find((b) => b.type === "text")?.text?.trim() ?? "";
+}
+
+// AIRE: loop:listing-alert-buyer-match
+function buildBuyerMatchReason(listing: ParagonListing, buyer: BuyerSearchWithLead): string {
+  const reasons: string[] = [];
+  if (buyer.priceMin !== null || buyer.priceMax !== null) {
+    reasons.push(`price $${listing.price.toLocaleString()}`);
+  }
+  if (buyer.bedsMin !== null) reasons.push(`${listing.beds}bd ≥ ${buyer.bedsMin}bd min`);
+  if (buyer.bathsMin !== null) reasons.push(`${listing.baths}ba ≥ ${buyer.bathsMin}ba min`);
+  if (buyer.areas) reasons.push("area match");
+  if (buyer.propertyTypes) reasons.push("property type");
+  return reasons.join(", ") || "criteria match";
 }
