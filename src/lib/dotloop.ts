@@ -1,4 +1,5 @@
 import { prisma } from "./prisma";
+import { withRetry } from "./error-memory";
 
 /**
  * Dotloop v2 API integration.
@@ -325,3 +326,40 @@ export const LOOP_STATUS_TO_STAGE: Record<string, string> = {
   CLOSED: "closed",
   LEASED: "closed",
 };
+
+// ─── Sync-freshness helpers ──────────────────────────────────────────────────
+// AIRE: loop:dotloop-sync-freshness
+
+export interface DotloopLoopDetail extends DotloopLoop {
+  milestones?: { name: string; date?: string; completed?: boolean }[];
+  lastActivityDate?: string;
+}
+
+/**
+ * Fetch a single loop by Dotloop ID using the stored access token.
+ * On 401 sets Setting["dotloop.authStatus"] = "expired" so callers can skip
+ * further API calls rather than hammering an expired token.
+ * Returns null if Dotloop credentials are not configured.
+ */
+export async function getLoopDetails(loopId: string): Promise<DotloopLoopDetail | null> {
+  // AIRE: loop:dotloop-sync-freshness
+  const config = await getDotloopConfig();
+  if (!config) return null;
+
+  try {
+    return await withRetry(
+      () => fetchLoopDetails(config, loopId) as Promise<DotloopLoopDetail>,
+      { source: "dotloop.getLoopDetails", type: "dotloop", context: { loopId } },
+    );
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.includes("401")) {
+      await prisma.setting.upsert({
+        where: { key: "dotloop.authStatus" },
+        update: { value: "expired" },
+        create: { key: "dotloop.authStatus", value: "expired" },
+      }).catch(() => null);
+    }
+    throw err;
+  }
+}

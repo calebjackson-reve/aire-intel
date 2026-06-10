@@ -3,6 +3,10 @@ import { generateDraft } from "@/lib/draft-agent";
 import { verifyCronSecret, cronUnauthorized } from "@/lib/cron-auth";
 import { startRun, finishRun, failRun } from "@/lib/agent-run";
 import { getTodayCT } from "@/lib/brief-date";
+import { getLoopDetails } from "@/lib/dotloop"; // AIRE: loop:dotloop-sync-freshness
+import { getSetting } from "@/lib/settings"; // AIRE: loop:dotloop-sync-freshness
+import { sendSMS, getTwilioConfig, normalizePhone } from "@/lib/twilio"; // AIRE: loop:dotloop-sync-freshness
+import { logError } from "@/lib/error-memory"; // AIRE: loop:dotloop-sync-freshness
 
 // Transaction Watchdog — runs at 6:00 AM CT (12 UTC) via Vercel cron
 // Finds active DotloopLoop records and Lead milestones due within 48h
@@ -158,6 +162,81 @@ async function runWatchdog() {
       } catch (err) {
         errors.push({ leadId: lead.id, error: String(err) });
       }
+    }
+
+    // 3. Sync freshness pass — alert when a closing loop hasn't synced in >12h
+    // AIRE: loop:dotloop-sync-freshness
+    try {
+      const authStatus = (await getSetting("dotloop.authStatus")) ?? "ok";
+      if (authStatus === "expired") {
+        // Unit C: skip API calls entirely and surface a single warning
+        await prisma.notification.create({
+          data: {
+            type: "warning",
+            title: "Dotloop auth expired — sync freshness check skipped",
+            body: "Reconnect Dotloop in Settings to resume stale-loop alerts.",
+            href: "/settings",
+          },
+        });
+      } else {
+        const twelveHoursAgo = new Date(now.getTime() - 12 * 60 * 60 * 1000);
+        const staleClosingLoops = await prisma.dotloopLoop.findMany({
+          where: {
+            status: { notIn: ["CLOSED", "SOLD", "LEASED"] },
+            lastSyncedAt: { lt: twelveHoursAgo },
+            OR: [
+              { closingDate: { lte: in48h, gte: now } },
+              { expectedClosingDate: { lte: in48h, gte: now } },
+            ],
+          },
+          include: { lead: true },
+        });
+
+        for (const loop of staleClosingLoops) {
+          try {
+            const detail = await getLoopDetails(loop.dotloopId);
+            if (!detail) continue;
+
+            const staleSinceHours = Math.floor(
+              (now.getTime() - loop.lastSyncedAt.getTime()) / (60 * 60 * 1000),
+            );
+            const closingDate = loop.closingDate ?? loop.expectedClosingDate;
+            const closingInHours = closingDate
+              ? Math.floor((closingDate.getTime() - now.getTime()) / (60 * 60 * 1000))
+              : null;
+            const address = loop.streetAddress ?? loop.name;
+            const isWithin24h = closingDate && closingDate <= in24h;
+
+            await prisma.notification.create({
+              data: {
+                type: "warning",
+                title: `Stale sync: ${address}`,
+                body: `${address}: closing in ${closingInHours ?? "?"}h but DotLoop last synced ${staleSinceHours}h ago`,
+                href: loop.leadId ? `/contacts/${loop.leadId}` : undefined,
+              },
+            });
+            actionsQueued++;
+
+            if (isWithin24h) {
+              const twilioConfig = await getTwilioConfig();
+              const calebPhone = await getSetting("CALEB_PHONE");
+              if (twilioConfig && calebPhone) {
+                await sendSMS(
+                  normalizePhone(calebPhone),
+                  `Closing ${closingInHours != null && closingInHours <= 12 ? "today" : "tomorrow"} — Dotloop hasn't synced in ${staleSinceHours}h for ${address}`,
+                  twilioConfig,
+                );
+              }
+            }
+          } catch (err) {
+            await logError("dotloop", "transaction-watchdog/sync-freshness", err, {
+              loopId: loop.dotloopId,
+            });
+          }
+        }
+      }
+    } catch (err) {
+      errors.push({ step: "sync_freshness", error: String(err) });
     }
 
     await finishRun(runId, { itemsProcessed, actionsQueued, errorLog: errors });
