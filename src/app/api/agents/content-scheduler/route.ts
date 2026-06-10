@@ -2,6 +2,9 @@ import { prisma } from "@/lib/prisma";
 import { verifyCronSecret, cronUnauthorized } from "@/lib/cron-auth";
 import { startRun, finishRun, failRun } from "@/lib/agent-run";
 import { getTodayCT } from "@/lib/brief-date";
+import { logError } from "@/lib/error-memory";
+import { getSetting, getParagonConfig } from "@/lib/settings";
+import { fetchActiveListings } from "@/lib/paragon";
 
 // Content Scheduler Agent — runs at 4:00 AM CT (10:00 UTC) via Vercel cron
 // Determines today's content type, generates a post, queues for approval
@@ -64,6 +67,7 @@ async function runContentScheduler() {
     let caption = "";
     let brief = "";
     let trendSignalId: string | undefined;
+    let listingPostsQueued = 0;
 
     if (contentType === "educational") {
       // Pull from TrendSignal table
@@ -139,7 +143,89 @@ async function runContentScheduler() {
       },
     });
 
-    await finishRun(runId, { itemsProcessed: 1, actionsQueued: 1 });
+    // ── Listing content pass — AIRE: loop:listing-content-production ─────────
+    const maxListingPostsSetting = await getSetting("content.maxListingPostsPerDay");
+    const maxListingPosts = parseInt(maxListingPostsSetting ?? "3", 10);
+    const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const todayListingCount = await prisma.contentProject.count({
+      where: { type: "listing_spotlight", mlsId: { not: null }, createdAt: { gte: since24h } },
+    });
+
+    if (todayListingCount < maxListingPosts) {
+      const paragonCfg = await getParagonConfig();
+      if (paragonCfg) {
+        let listings: Awaited<ReturnType<typeof fetchActiveListings>> = [];
+        try {
+          listings = await fetchActiveListings(paragonCfg, { status: "Active", limit: 10 });
+        } catch (err) {
+          await logError("paragon", "content-scheduler/listing-pass", err as Error);
+        }
+
+        for (const listing of listings) {
+          if (listingPostsQueued + todayListingCount >= maxListingPosts) break;
+          if (!listing.mlsNumber) continue;
+
+          // Dedup: skip if ContentProject already exists for this MLS ID
+          const existingProject = await prisma.contentProject.findFirst({
+            where: { mlsId: listing.mlsNumber },
+            select: { id: true },
+          });
+          if (existingProject) continue;
+
+          const listingBrief = `Listing spotlight: ${listing.address}, ${listing.city}. Price: $${listing.price.toLocaleString()}. ${listing.beds}bd/${listing.baths}ba, ${listing.sqft.toLocaleString()} sqft.`;
+          const [listingCaption, reelHook] = await Promise.all([
+            generateCaption("listing_spotlight", listingBrief),
+            generateReelHook(listing.address, listing.price, `${listing.beds}bd/${listing.baths}ba`),
+          ]);
+
+          const listingProject = await prisma.contentProject.create({
+            data: {
+              type: "listing_spotlight",
+              status: "draft",
+              mlsId: listing.mlsNumber,
+              brief: listingBrief,
+              captionDraft: listingCaption,
+              listingAddress: listing.address,
+              price: listing.price,
+              platform: "instagram,facebook",
+              slideSpec: {
+                slides: [
+                  { index: 1, type: "hero", headline: listing.address, subline: `$${listing.price.toLocaleString()} · ${listing.beds}bd/${listing.baths}ba` },
+                  { index: 2, type: "feature", headline: "Living Space", subline: `${listing.sqft.toLocaleString()} sqft` },
+                  { index: 3, type: "feature", headline: listing.city, subline: listing.propertyType },
+                  { index: 4, type: "feature", headline: listing.daysOnMarket === 0 ? "Just Listed" : `${listing.daysOnMarket} days on market` },
+                  { index: 5, type: "cta", headline: "Book a Showing", subline: "caleb.jackson@reverealtors.com" },
+                ],
+              },
+              motionSpec: reelHook || undefined,
+            },
+          });
+
+          await prisma.actionQueue.create({
+            data: {
+              type: "post_content",
+              agentType: "content_scheduler",
+              priority: 3,
+              briefDate: today,
+              requiresApproval: true,
+              payload: {
+                contentProjectId: listingProject.id,
+                mlsId: listing.mlsNumber,
+                address: listing.address,
+                contentType: "listing_spotlight",
+                caption: listingCaption.slice(0, 200),
+                reelHook,
+              },
+            },
+          });
+
+          listingPostsQueued++;
+        }
+      }
+    }
+    // ── end listing content pass ──────────────────────────────────────────────
+
+    await finishRun(runId, { itemsProcessed: 1 + listingPostsQueued, actionsQueued: 1 + listingPostsQueued });
 
     return Response.json({
       ok: true,
@@ -147,11 +233,38 @@ async function runContentScheduler() {
       contentType,
       contentProjectId: project.id,
       captionPreview: caption.slice(0, 100),
+      listingPostsQueued,
     });
   } catch (err) {
     await failRun(runId, err);
     return Response.json({ ok: false, error: String(err) }, { status: 500 });
   }
+}
+
+// AIRE: loop:listing-content-production
+async function generateReelHook(address: string, price: number, feature: string): Promise<string> {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) return "";
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "claude-haiku-4-5",
+      max_tokens: 80,
+      messages: [{
+        role: "user",
+        content: `Write one punchy Instagram Reel hook (< 125 chars) for this listing: ${address}, $${price.toLocaleString()}, ${feature}. Start with a number or a question. Return the hook only.`,
+      }],
+    }),
+    signal: AbortSignal.timeout(10_000),
+  });
+  if (!res.ok) return "";
+  const data = await res.json() as { content: Array<{ type: string; text: string }> };
+  return data.content.find((b) => b.type === "text")?.text?.trim() ?? "";
 }
 
 async function generateCaption(contentType: string, brief: string): Promise<string> {

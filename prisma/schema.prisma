@@ -36,6 +36,8 @@ model Lead {
   referredBy      String?
   source          String?
   tags            String?   // comma-separated
+  birthday        DateTime?
+  anniversary     DateTime?
   // Follow-up
   lastContactDate DateTime?
   nextActionDate  DateTime?
@@ -481,6 +483,7 @@ model ContentProject {
   hashtags        Json?
   clientRefId     String?
   clientRef       ClientRef? @relation(fields: [clientRefId], references: [id], onDelete: SetNull)
+  mlsId           String?  // AIRE: loop:listing-content-production — dedup guard per listing
   listingAddress  String?
   price           Float?
   platform        String?  // comma-separated: instagram,facebook
