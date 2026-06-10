@@ -4,6 +4,7 @@ import { mapLoftyLeadToAire } from "@/lib/lofty";
 import { generateDraft } from "@/lib/draft-agent";
 import { enrollLead } from "@/lib/smart-plan-executor";
 import { getTodayCT } from "@/lib/brief-date";
+import { handleInboundReply } from "@/lib/inbound-reply"; // AIRE: loop:inbound-reply-handler
 
 // Lofty posts events here when leads are created/updated
 // Register this URL in Lofty: Settings > Integrations > Webhooks
@@ -12,6 +13,36 @@ import { getTodayCT } from "@/lib/brief-date";
 export async function POST(request: NextRequest) {
   const body = await request.json();
   const { event, lead: ll } = body;
+
+  // AIRE: loop:inbound-reply-handler — handle inbound SMS/email reply activity events
+  if (
+    (body.activity_type === "sms_received" || body.activity_type === "email_received") &&
+    body.leadId
+  ) {
+    const lid = String(body.leadId);
+    const CUID_RE = /^c[a-z0-9]{24,}$/i;
+    let aireLeadId: string | null = null;
+
+    if (CUID_RE.test(lid)) {
+      aireLeadId = lid;
+    } else {
+      const byLofty = await prisma.lead.findUnique({ where: { loftyId: lid } });
+      aireLeadId = byLofty?.id ?? null;
+    }
+
+    if (!aireLeadId) {
+      return Response.json({ ok: false, error: `No AIRE lead for loftyId "${lid}"` }, { status: 404 });
+    }
+
+    const channel: "text" | "email" = body.activity_type === "sms_received" ? "text" : "email";
+    const content: string = String(body.text ?? body.subject ?? "").trim();
+
+    await handleInboundReply({ leadId: aireLeadId, content, channel, method: channel }).catch(
+      (err) => console.error("[lofty-webhook] inbound-reply error:", err),
+    );
+
+    return Response.json({ ok: true, event: body.activity_type, leadId: aireLeadId });
+  }
 
   if (!ll?.id) {
     return Response.json({ ok: false, error: "No lead in payload" }, { status: 400 });

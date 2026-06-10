@@ -156,3 +156,132 @@ export async function handleInboundReply(opts: InboundReplyOpts): Promise<void> 
     },
   });
 }
+
+// AIRE: loop:inbound-reply-handler
+// Variant for callers (e.g. Zapier webhook) that have already created the ContactLog
+// and updated lastContactDate — this handles only the classify → stage → draft → queue → notify steps.
+export interface ProcessInboundReplyOpts {
+  leadId: string;
+  leadName: string;
+  leadStage: string;
+  leadPhone: string | null;
+  leadEmail: string | null;
+  content: string;
+  channel: "text" | "email";
+}
+
+// AIRE: loop:inbound-reply-handler
+export async function processInboundReplyAction(opts: ProcessInboundReplyOpts): Promise<void> {
+  const { leadId, leadName, leadStage, leadPhone, leadEmail, content, channel } = opts;
+
+  // Exit condition: closed leads are ignored
+  if (leadStage === "closed_won" || leadStage === "closed_lost") return;
+
+  const intent = classifyReplyIntent(content);
+  const today = getTodayCT();
+
+  // Stage update
+  if (intent === "unsubscribe") {
+    await prisma.lead.update({ where: { id: leadId }, data: { stage: "closed_lost" } });
+    await prisma.notification.create({
+      data: {
+        type: "lead_assigned",
+        title: `${leadName} unsubscribed`,
+        body: "Lead moved to closed_lost — no further outreach will be generated.",
+        href: `/contacts/${leadId}`,
+      },
+    });
+    return;
+  }
+
+  if (intent === "interested" && leadStage === "new_lead") {
+    await prisma.lead.update({ where: { id: leadId }, data: { stage: "active" } });
+  }
+
+  // Rate-limit: max 1 draft per lead per configurable window
+  const windowMinutes = parseInt(
+    await getSettingWithDefault("INBOUND_REPLY_RATE_LIMIT_MINUTES", "15"),
+    10,
+  );
+  const windowStart = new Date(Date.now() - windowMinutes * 60 * 1000);
+  const recentDraft = await prisma.messageDraft.findFirst({
+    where: { leadId, source: "reply_to_inbound", createdAt: { gte: windowStart } },
+  });
+  if (recentDraft) return;
+
+  // Idempotency: skip if pending action already exists for today
+  const existingAction = await prisma.actionQueue.findFirst({
+    where: {
+      leadId,
+      briefDate: today,
+      status: "pending",
+      type: "draft_message",
+      agentType: "inbound_reply_handler",
+    },
+  });
+  if (existingAction) return;
+
+  // Generate reply draft
+  let draftBody = "";
+  let draftSubject: string | null = null;
+  let messageDraftId: string | undefined;
+
+  try {
+    const draft = await withRetry(
+      () =>
+        generateDraft({
+          leadId,
+          channel,
+          source: "reply_to_inbound",
+          instruction: `Intent classified as: ${intent}. Inbound message: "${content.slice(0, 300)}"`,
+        }),
+      { source: "inbound-reply-handler", type: "ai", context: { leadId } },
+    );
+    draftBody = draft.body;
+    draftSubject = draft.subject;
+
+    const saved = await prisma.messageDraft.create({
+      data: { leadId, channel, subject: draftSubject, body: draftBody, status: "pending", source: "reply_to_inbound" },
+    });
+    messageDraftId = saved.id;
+  } catch (err) {
+    await logError("ai", "inbound-reply-handler", err, { leadId });
+    draftBody = "(Draft generation failed — reply manually)";
+  }
+
+  // ActionQueue
+  await prisma.actionQueue.create({
+    data: {
+      type: "draft_message",
+      agentType: "inbound_reply_handler",
+      leadId,
+      priority: 2,
+      briefDate: today,
+      requiresApproval: true,
+      payload: {
+        messageDraftId: messageDraftId ?? null,
+        leadId,
+        leadName,
+        intent,
+        channel,
+        body: draftBody,
+        subject: draftSubject,
+        toPhone: leadPhone ?? null,
+        toEmail: leadEmail ?? null,
+        inboundContent: content.slice(0, 500),
+      },
+    },
+  });
+
+  // Notification
+  await prisma.notification.create({
+    data: {
+      type: "lead_assigned",
+      title: `Reply from ${leadName} — draft ready`,
+      body: messageDraftId
+        ? `Intent: ${intent}. Response draft queued for approval.`
+        : `Intent: ${intent}. Draft failed — review manually.`,
+      href: `/contacts/${leadId}`,
+    },
+  });
+}

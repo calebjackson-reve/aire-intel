@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSetting } from "@/lib/settings";
+import { processInboundReplyAction } from "@/lib/inbound-reply"; // AIRE: loop:inbound-reply-handler
 
 /**
  * Inbound Zapier webhook receiver — the counterpart to src/lib/zapier.ts.
@@ -171,6 +172,24 @@ export async function POST(request: NextRequest) {
           data: { lastContactDate: new Date() },
         });
         console.log("[zapier-webhook] received activity.logged", lead.id, log.id);
+
+        // AIRE: loop:inbound-reply-handler — classify inbound text/email replies and queue a draft
+        const effectiveDirection = body.direction ?? "inbound";
+        if (
+          effectiveDirection === "inbound" &&
+          (body.method === "text" || body.method === "email")
+        ) {
+          await processInboundReplyAction({
+            leadId: lead.id,
+            leadName: lead.name,
+            leadStage: lead.stage,
+            leadPhone: lead.phone ?? null,
+            leadEmail: lead.email ?? null,
+            content: body.note ?? "",
+            channel: body.method as "text" | "email",
+          }).catch((err) => console.error("[zapier-webhook] inbound-reply error:", err));
+        }
+
         return Response.json({ ok: true, leadId: lead.id, logId: log.id });
       }
 
