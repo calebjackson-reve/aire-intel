@@ -17,6 +17,7 @@
     { "path": "/api/agents/health-check",           "schedule": "30 11 * * *" },
     { "path": "/api/agents/audit-debt",             "schedule": "0 7 * * 0"   },
     { "path": "/api/agents/ads-oracle",             "schedule": "0 14 * * 1"  },
-    { "path": "/api/agents/competitor-monitor",      "schedule": "0 13 * * 5"  }
+    { "path": "/api/agents/competitor-monitor",      "schedule": "0 13 * * 5"  },
+    { "path": "/api/agents/goal-pacing",             "schedule": "0 13 * * 1"  }
   ]
 }
