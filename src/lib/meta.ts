@@ -79,8 +79,6 @@ export async function publishToInstagram(caption: string, imageUrl: string): Pro
   }, { source: "meta/publishToInstagram", type: "meta" });
 }
 
-// TODO: Wire these functions into src/app/api/social/route.ts replacing any placeholder logic.
-
 // AIRE: loop:meta-token-refresh-alert
 export async function checkTokenExpiry(): Promise<{ daysRemaining: number; expiresAt: Date | null }> {
   const token = process.env.META_PAGE_ACCESS_TOKEN;

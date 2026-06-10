@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getMetaConfig } from "@/lib/settings";
+import { publishToFacebook, publishToInstagram } from "@/lib/meta"; // AIRE: loop:audit-debt-burndown
 
 // ─── Meta Graph API integration ───────────────────────────────────────────────
 // Credentials are read per-request from the Settings DB (via getMetaConfig),
@@ -50,50 +51,19 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    const { token: META_TOKEN, pageId: META_PAGE_ID, igId: META_IG_ID } = config;
     const results: Record<string, unknown> = {};
 
-    // Post to Facebook Page
     if (platform === "facebook" || platform === "both") {
       try {
-        const fbBody: Record<string, string> = { message: caption, access_token: META_TOKEN };
-        if (imageUrl) fbBody.link = imageUrl;
-
-        const fbRes = await fetch(
-          `https://graph.facebook.com/v21.0/${META_PAGE_ID}/feed`,
-          { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(fbBody) }
-        );
-        const fbData = await fbRes.json();
-        results.facebook = fbData;
+        results.facebook = await publishToFacebook(caption, imageUrl);
       } catch (e) {
         results.facebook = { error: String(e) };
       }
     }
 
-    // Post to Instagram (requires image)
-    if ((platform === "instagram" || platform === "both") && imageUrl && META_IG_ID) {
+    if ((platform === "instagram" || platform === "both") && imageUrl && config.igId) {
       try {
-        // Step 1: Create media container
-        const containerRes = await fetch(
-          `https://graph.facebook.com/v21.0/${META_IG_ID}/media`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ image_url: imageUrl, caption, access_token: META_TOKEN }),
-          }
-        );
-        const { id: containerId } = await containerRes.json();
-
-        // Step 2: Publish container
-        const publishRes = await fetch(
-          `https://graph.facebook.com/v21.0/${META_IG_ID}/media_publish`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ creation_id: containerId, access_token: META_TOKEN }),
-          }
-        );
-        results.instagram = await publishRes.json();
+        results.instagram = await publishToInstagram(caption, imageUrl);
       } catch (e) {
         results.instagram = { error: String(e) };
       }
