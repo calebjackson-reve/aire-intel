@@ -8,8 +8,19 @@ export interface MetaPostResult {
   platform: "facebook" | "instagram";
 }
 
-// TODO: Instagram requires a publicly accessible image URL (no local/localhost URLs).
-//       In dev, images generated locally will need to be uploaded to storage first.
+// AIRE: loop:audit-debt-burndown — enforces Meta's public-HTTPS-URL requirement at call time
+function requirePublicImageUrl(url: string, fn: string): void {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    throw new Error(`${fn}: invalid imageUrl "${url}"`);
+  }
+  if (parsed.protocol !== "https:" || parsed.hostname === "localhost" || parsed.hostname === "127.0.0.1") {
+    throw new Error(`${fn}: imageUrl must be a public HTTPS URL (got "${url}"). Local dev requires a deployed URL or ngrok tunnel.`);
+  }
+}
+
 export async function publishToFacebook(message: string, imageUrl?: string): Promise<MetaPostResult> {
   const config = await getMetaConfig();
   if (!config) throw new Error("Meta credentials not configured");
@@ -39,10 +50,10 @@ export async function publishToFacebook(message: string, imageUrl?: string): Pro
 }
 
 // Instagram publish is two steps: create container → publish container.
-// TODO: imageUrl must be a public HTTPS URL. Local dev requires ngrok or a deployed URL.
 export async function publishToInstagram(caption: string, imageUrl: string): Promise<MetaPostResult> {
   const config = await getMetaConfig();
   if (!config || !config.igId) throw new Error("Instagram Business ID not configured");
+  requirePublicImageUrl(imageUrl, "publishToInstagram");
 
   return withRetry(async () => {
     // Step 1: Create media container
