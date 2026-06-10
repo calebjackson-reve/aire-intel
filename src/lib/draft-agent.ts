@@ -12,7 +12,7 @@ import { REVE_PIPELINE_SYSTEM } from "./reve-system-prompt";
 import { getVoiceCorpus, mineVoiceCorpus, buildVoiceSystemBlock } from "./voice-corpus";
 
 export type DraftChannel = "text" | "email";
-export type DraftSource = "revival" | "followup" | "manual" | "reply_to_inbound"; // AIRE: loop:inbound-reply-handler
+export type DraftSource = "revival" | "followup" | "manual" | "reply_to_inbound" | "sphere_reactivation" | "intent_revival"; // AIRE: loop:inbound-reply-handler // AIRE: loop:sphere-reactivation // AIRE: loop:propstream-intent-revival
 
 export interface GeneratedDraft {
   channel: DraftChannel;
@@ -43,6 +43,12 @@ const INTENT_BY_SOURCE: Record<DraftSource, string> = {
   // AIRE: loop:inbound-reply-handler
   reply_to_inbound:
     "A lead just replied to your outreach. Acknowledge their reply warmly and move the conversation forward — confirm the showing time, lock in a call, or answer their question directly. Keep it brief and human. Never start with 'Great!' or 'Absolutely!'.",
+  // AIRE: loop:sphere-reactivation
+  sphere_reactivation:
+    "This is a sphere contact — someone in Caleb's personal network, past client, or community connection. Write a warm, genuine check-in that sounds like it came from a friend, not an agent. Make it personal and brief. No pitch, no CTA pressure. Just reconnect.",
+  // AIRE: loop:propstream-intent-revival
+  intent_revival:
+    "This cold lead has real intent signals — there's new listing activity or price movement in their target area right now. Reference the specific listing or market shift mentioned in Extra direction. One low-pressure message that gives them a concrete reason to re-engage today. No guilt, no 'just checking in'. Make it feel timely and specific.",
 };
 
 /**
