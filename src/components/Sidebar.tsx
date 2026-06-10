@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
-  Sunrise, GitBranch, Users, PenTool, Settings,
+  Sunrise, GitBranch, Users, PenTool, Settings, Map,
 } from "lucide-react";
 
 interface NavItem {
@@ -21,6 +21,7 @@ const PRIMARY: NavItem[] = [
   { href: "/today", label: "Today", icon: <Sunrise size={ICON} />, badgeKey: "queue" },
   { href: "/pipeline", label: "Pipeline", icon: <GitBranch size={ICON} />, badgeKey: "overdue" },
   { href: "/contacts", label: "Contacts", icon: <Users size={ICON} /> },
+  { href: "/market", label: "Market", icon: <Map size={ICON} /> },
   { href: "/create-post", label: "Content", icon: <PenTool size={ICON} /> },
   { href: "/settings", label: "Settings", icon: <Settings size={ICON} /> },
 ];
@@ -68,7 +69,7 @@ export default function Sidebar() {
     <aside className="aire-nav">
       <Link href="/today" className="brand" aria-label="AIRE — Today">
         <div className="mk">A</div>
-        <div>
+        <div className="ni-label">
           <div className="nm">AIRE</div>
           <div className="sb">Rêve</div>
         </div>
@@ -83,7 +84,7 @@ export default function Sidebar() {
             aria-label={item.label}
           >
             {item.icon}
-            <span>{item.label}</span>
+            <span className="ni-label">{item.label}</span>
             {badge(item)}
           </Link>
         ))}
@@ -91,7 +92,7 @@ export default function Sidebar() {
 
       <Link href="/settings" className="navfoot" style={{ textDecoration: "none" }} aria-label="Settings">
         <div className="av">CJ</div>
-        <div>
+        <div className="ni-label">
           <div className="who">Caleb Jackson</div>
           <div className="role">Rêve Realtors®</div>
         </div>

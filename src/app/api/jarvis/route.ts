@@ -2,6 +2,10 @@ import { NextRequest } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { prisma } from "@/lib/prisma";
 import { logError } from "@/lib/error-memory";
+import { skipTrace } from "@/lib/batchdata";
+import { buildCMASummary } from "@/lib/rentcast";
+import { getBatonRougeMacro, getMortgageRate, getRateAlert } from "@/lib/housing-intel";
+import { fetchActiveListings } from "@/lib/paragon";
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -71,6 +75,52 @@ const TOOLS: Anthropic.Tool[] = [
       },
       required: ["agent_type"],
     },
+  },
+  {
+    name: "skip_trace_lead",
+    description: "Skip-trace a lead to find their current phone number, email, and address. Uses BatchData. Requires BATCHDATA_API_KEY.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        lead_id: { type: "string", description: "Lead ID in AIRE" },
+        name: { type: "string", description: "Full name (if no lead_id)" },
+        address: { type: "string", description: "Known address to search against" },
+      },
+    },
+  },
+  {
+    name: "run_comps",
+    description: "Run a CMA — get the AVM (estimated value), rental potential, and nearby comparable sales for any address. Uses Rentcast.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        address: { type: "string", description: "Property address" },
+        city: { type: "string", description: "City (default: Baton Rouge)" },
+        state: { type: "string", description: "State (default: LA)" },
+        asking_price: { type: "number", description: "Optional asking price to calculate gross yield against" },
+      },
+      required: ["address"],
+    },
+  },
+  {
+    name: "search_mls",
+    description: "Search live MLS listings from Paragon. Filter by beds, baths, price range, city, or ZIP.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        city: { type: "string" },
+        zip: { type: "string" },
+        min_price: { type: "number" },
+        max_price: { type: "number" },
+        min_beds: { type: "number" },
+        limit: { type: "number", description: "Max listings (default 5)" },
+      },
+    },
+  },
+  {
+    name: "market_pulse",
+    description: "Get Baton Rouge macro market snapshot — 30-yr mortgage rate, local unemployment, housing starts, rate movement alert.",
+    input_schema: { type: "object" as const, properties: {} },
   },
 ];
 
@@ -222,6 +272,73 @@ async function executeTool(name: string, input: Record<string, unknown>): Promis
           headers: { Authorization: `Bearer ${process.env.CRON_SECRET}`, "Content-Type": "application/json" },
         });
         return res.ok ? `${agentType} agent triggered successfully` : `Agent trigger failed: ${await res.text()}`;
+      }
+
+      case "skip_trace_lead": {
+        if (!process.env.BATCHDATA_API_KEY) return "Skip trace unavailable — BATCHDATA_API_KEY not set. Sign up at batchdata.com to enable.";
+        const leadId = input.lead_id as string | undefined;
+        let name = input.name as string | undefined;
+        let address = input.address as string | undefined;
+
+        if (leadId) {
+          const lead = await prisma.lead.findUnique({ where: { id: leadId } });
+          if (!lead) return `Lead ${leadId} not found`;
+          name = lead.name;
+        }
+
+        const result = await skipTrace({ name, address });
+        if (!result.phones.length && !result.emails.length) {
+          return `No results found for "${name ?? address}". Try providing more identifying info.`;
+        }
+
+        const phones = result.phones.slice(0, 3).map(p => `${p.number} (${p.type}, ${p.confidence}% confidence${p.doNotCall ? " — DNC" : ""})`);
+        const emails = result.emails.slice(0, 2).map(e => `${e.email} (${e.confidence}%)`);
+        const lines = [`Skip trace results for "${name ?? address}":`];
+        if (phones.length) lines.push(`Phones: ${phones.join("; ")}`);
+        if (emails.length) lines.push(`Emails: ${emails.join("; ")}`);
+        if (result.currentAddress) lines.push(`Current address: ${result.currentAddress}`);
+        if (result.employer) lines.push(`Employer: ${result.employer}`);
+        if (result.relatives.length) lines.push(`Relatives: ${result.relatives.slice(0, 3).join(", ")}`);
+        return lines.join("\n");
+      }
+
+      case "run_comps": {
+        if (!process.env.RENTCAST_API_KEY) return "Comps unavailable — RENTCAST_API_KEY not set. Sign up at rentcast.io to enable.";
+        const address = input.address as string;
+        const city = (input.city as string | undefined) ?? "Baton Rouge";
+        const state = (input.state as string | undefined) ?? "LA";
+        const askingPrice = input.asking_price as number | undefined;
+        const cma = await buildCMASummary(address, city, state, askingPrice);
+        return cma.summary;
+      }
+
+      case "search_mls": {
+        const listings = await fetchActiveListings(undefined, {
+          city: input.city as string | undefined,
+          zip: input.zip as string | undefined,
+          minPrice: input.min_price as number | undefined,
+          maxPrice: input.max_price as number | undefined,
+          beds: input.min_beds as number | undefined,
+          limit: (input.limit as number | undefined) ?? 5,
+        });
+        if (!listings.length) return "No active listings found for those filters.";
+        return listings.slice(0, 8).map(l =>
+          `${l.address}, ${l.city} — ${l.price ? `$${l.price.toLocaleString()}` : "price N/A"} · ${l.beds ?? "?"}bd/${l.baths ?? "?"}ba · ${l.daysOnMarket ?? "?"}d on market · MLS# ${l.mlsNumber}`
+        ).join("\n");
+      }
+
+      case "market_pulse": {
+        const [macro, rateAlert] = await Promise.all([
+          getBatonRougeMacro().catch(() => null),
+          getRateAlert().catch(() => null),
+        ]);
+        const snap = await getMortgageRate().catch(() => null);
+        const lines: string[] = ["Baton Rouge market snapshot:"];
+        if (snap) lines.push(`30-yr rate: ${snap.current}% (${snap.delta > 0 ? "+" : ""}${snap.delta.toFixed(3)}% vs last week)`);
+        if (macro?.unemployment) lines.push(`BR unemployment: ${macro.unemployment}%`);
+        if (macro?.housingStarts) lines.push(`US housing starts: ${macro.housingStarts}k units — ${macro.marketDirection}`);
+        if (rateAlert?.triggered) lines.push(`⚠️ Rate alert: ${rateAlert.message}`);
+        return lines.join("\n");
       }
 
       default:

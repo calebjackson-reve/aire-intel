@@ -18,6 +18,10 @@ const TOOL_LABELS: Record<string, string> = {
   get_cold_leads: "scanning cold leads",
   get_pipeline_summary: "reading pipeline",
   run_agent: "triggering agent",
+  skip_trace_lead: "skip tracing",
+  run_comps: "running comps",
+  search_mls: "searching MLS",
+  market_pulse: "reading market data",
 };
 
 export default function JarvisBar() {
