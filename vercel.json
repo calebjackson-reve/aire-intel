@@ -19,6 +19,8 @@
     { "path": "/api/agents/ads-oracle",             "schedule": "0 14 * * 1"  },
     { "path": "/api/agents/competitor-monitor",      "schedule": "0 13 * * 5"  },
     { "path": "/api/agents/goal-pacing",             "schedule": "0 13 * * 1"  },
-    { "path": "/api/agents/content-learning",        "schedule": "0 5 * * 0"   }
+    { "path": "/api/agents/content-learning",        "schedule": "0 5 * * 0"   },
+    { "path": "/api/agents/revival-tracker",         "schedule": "30 13 * * 1" },
+    { "path": "/api/agents/meta-discovery",           "schedule": "0 5 28 * *"  }
   ]
 }
