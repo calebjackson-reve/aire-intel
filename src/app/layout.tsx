@@ -6,9 +6,10 @@ import AIAssistant from "@/components/AIAssistant";
 import CommandPalette from "@/components/CommandPalette";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ToastProvider } from "@/components/ui/Toast";
+import PushSetup from "@/components/PushSetup";
 
 export const metadata: Metadata = {
-  title: "AIRE — Rêve Realtors",
+  title: "AIRÉ — Rêve Realtors",
   description: "Operations platform for Caleb Jackson at Rêve Realtors®",
 };
 
@@ -23,6 +24,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="h-full">
       <head>
+        <link rel="manifest" href="/manifest.json" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400&display=swap" rel="stylesheet" />
@@ -40,6 +42,7 @@ export default function RootLayout({
           {/* Global Cmd+K command palette — available on every page */}
           <CommandPalette />
           <AIAssistant />
+          <PushSetup />
         </ToastProvider>
       </body>
     </html>

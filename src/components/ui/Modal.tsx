@@ -30,7 +30,7 @@ export function Modal({ open, onClose, children, title, width = 480, style }: Mo
       style={{
         position: "fixed",
         inset: 0,
-        background: "rgba(0,0,0,0.65)",
+        background: "rgba(17,24,39,0.35)",
         backdropFilter: "blur(6px)",
         WebkitBackdropFilter: "blur(6px)",
         zIndex: 1000,
@@ -47,7 +47,7 @@ export function Modal({ open, onClose, children, title, width = 480, style }: Mo
           background: "var(--aire-card-warm)",
           border: "1px solid var(--aire-border-2)",
           borderRadius: "16px",
-          boxShadow: "0 24px 80px rgba(0,0,0,0.7)",
+          boxShadow: "var(--shadow-float-hover)",
           width: "100%",
           maxWidth: width,
           maxHeight: "90vh",

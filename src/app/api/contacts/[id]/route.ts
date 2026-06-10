@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { triggerZap } from "@/lib/zapier";
 import { generateContractMilestones } from "@/lib/contract-milestones";
+import { autoEnrollReviewOnClose } from "@/lib/smart-plan-executor";
 
 export async function GET(
   _req: NextRequest,
@@ -53,6 +54,13 @@ export async function PATCH(
       const contractDate = lead.contractDate ?? lead.nextActionDate ?? new Date();
       const closing = lead.closingDate ?? null;
       generateContractMilestones(lead.id, new Date(contractDate), closing).catch(() => {});
+    }
+
+    // When a contact closes, auto-enroll them in the post-close review-ask
+    // sequence. Gated behind GOOGLE_REVIEW_LINK (see autoEnrollReviewOnClose),
+    // so it stays dormant until the real Google review link is configured.
+    if (lead.stage === "closed") {
+      autoEnrollReviewOnClose(lead.id).catch(() => {});
     }
   }
 

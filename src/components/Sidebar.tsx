@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   Sunrise, GitBranch, Users, Route, Target, Megaphone, CalendarDays,
-  Map, Home, Briefcase, RefreshCw, Inbox, PenTool, Activity, Settings,
+  Map, Home, Briefcase, RefreshCw, Inbox, PenTool, Activity, Settings, Bot, Newspaper,
 } from "lucide-react";
 
 interface NavItem {
@@ -54,6 +54,8 @@ const SECTIONS: NavSection[] = [
   {
     title: "System",
     items: [
+      { href: "/brief", label: "Brief", icon: <Newspaper size={ICON} /> },
+      { href: "/agents", label: "Agents", icon: <Bot size={ICON} /> },
       { href: "/system", label: "Health", icon: <Activity size={ICON} /> },
       { href: "/settings", label: "Settings", icon: <Settings size={ICON} /> },
     ],

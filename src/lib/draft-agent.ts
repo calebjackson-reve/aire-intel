@@ -12,7 +12,7 @@ import { REVE_PIPELINE_SYSTEM } from "./reve-system-prompt";
 import { getVoiceCorpus, mineVoiceCorpus, buildVoiceSystemBlock } from "./voice-corpus";
 
 export type DraftChannel = "text" | "email";
-export type DraftSource = "revival" | "followup" | "manual";
+export type DraftSource = "revival" | "followup" | "manual" | "reply_to_inbound"; // AIRE: loop:inbound-reply-handler
 
 export interface GeneratedDraft {
   channel: DraftChannel;
@@ -40,6 +40,9 @@ const INTENT_BY_SOURCE: Record<DraftSource, string> = {
     "Move this lead forward from where they are. Reference their real history and make the next step small and obvious.",
   manual:
     "Write a natural message appropriate to where this lead is in the pipeline.",
+  // AIRE: loop:inbound-reply-handler
+  reply_to_inbound:
+    "A lead just replied to your outreach. Acknowledge their reply warmly and move the conversation forward — confirm the showing time, lock in a call, or answer their question directly. Keep it brief and human. Never start with 'Great!' or 'Absolutely!'.",
 };
 
 /**

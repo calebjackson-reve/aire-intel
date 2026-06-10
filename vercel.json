@@ -2,5 +2,12 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "nextjs",
   "buildCommand": "prisma generate && next build",
-  "regions": ["iad1"]
+  "regions": ["iad1"],
+  "crons": [
+    { "path": "/api/agents/market-intel",         "schedule": "0 9 * * *"  },
+    { "path": "/api/agents/content-scheduler",    "schedule": "0 10 * * *" },
+    { "path": "/api/agents/morning-brief",        "schedule": "0 11 * * *" },
+    { "path": "/api/agents/transaction-watchdog", "schedule": "0 12 * * *" },
+    { "path": "/api/agents/revival",              "schedule": "0 1 * * *"  }
+  ]
 }

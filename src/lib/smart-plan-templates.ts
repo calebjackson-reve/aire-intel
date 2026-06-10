@@ -114,6 +114,28 @@ export const PLAN_TEMPLATES: PlanTemplate[] = [
     ],
   },
 
+  // ─── Post-Close Google Review Request ────────────────────────────────────
+  // Fires when a lead moves to stage "closed" (day 0 = closing day). Texts
+  // are the workhorse (highest open rate); email is the backup; the sequence
+  // ends gracefully and never pesters. Replace [REVIEW_LINK] with Caleb's
+  // Google review short link (Business Profile → Ask for reviews → copy link),
+  // or set it once and the executor substitutes {reviewLink}.
+  {
+    id: "post_close_review_14d",
+    name: "Post-Close Review Request — 14 Day Ask",
+    description: "Catch past clients at peak-happiness right after closing and turn it into a Google review. Ends after one gentle final ask — no pestering.",
+    triggerType: "stage_change",
+    category: "sphere",
+    durationDays: 14,
+    steps: [
+      { day: 1, method: "text", message: "{firstName} — congrats again on {address}, so glad we got you in. If you've got 30 seconds, a quick Google review genuinely helps me more than anything: [REVIEW_LINK]" },
+      { day: 2, method: "task", message: "Personal touch: if {firstName} was happy at closing, send a quick voice note or DM thanking them — and mention the review link's in your last text. Make it feel personal, not automated." },
+      { day: 5, method: "email", subject: "One quick favor", message: "Hey {firstName} —\n\nHope the first few days at {address} have been smooth. One small favor when you get a sec — a quick Google review means a lot for a local agent and takes about 30 seconds:\n\n[REVIEW_LINK]\n\nNo worries if you're slammed. Either way I'm a text away for anything house-related — contractors, handymen, whatever you need.\n\n— Caleb" },
+      { day: 10, method: "text", message: "{firstName} — promise this is the last nudge. If you have a minute for that quick review it'd really help me out: [REVIEW_LINK]. If not, no sweat at all — enjoy the new place." },
+      { day: 14, method: "task", message: "Close the loop: did {firstName} leave a review? If yes — send a genuine thank-you and ask if they know anyone thinking of selling. If no — stop here, don't ask again, and move them to 'Sphere Quarterly'." },
+    ],
+  },
+
   // ─── Buyer Search Activation ─────────────────────────────────────────────
   {
     id: "buyer_search_activation_14d",

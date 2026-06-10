@@ -14,6 +14,29 @@
 //   - advanceEnrollments: on each dashboard load (lightweight DB check)
 
 import { prisma } from "./prisma";
+import { getTemplate } from "./smart-plan-templates";
+
+const REVIEW_TEMPLATE_ID = "post_close_review_14d";
+
+/**
+ * Substitute merge fields in outbound copy before it's sent.
+ * Without this, auto-fired steps would send literal "{firstName}" / "[REVIEW_LINK]".
+ * Unknown placeholders are left untouched (never breaks a message).
+ */
+function renderMessage(
+  text: string,
+  lead: { name: string; firstName?: string | null; lastName?: string | null; address?: string | null }
+): string {
+  const first = lead.firstName?.trim() || lead.name?.trim().split(/\s+/)[0] || "there";
+  const reviewLink = process.env.GOOGLE_REVIEW_LINK ?? "";
+  return text
+    .replace(/\{firstName\}/g, first)
+    .replace(/\{lastName\}/g, lead.lastName?.trim() ?? "")
+    .replace(/\{name\}/g, lead.name?.trim() || first)
+    .replace(/\{address\}/g, lead.address?.trim() || "your new place")
+    .replace(/\{reviewLink\}/g, reviewLink)
+    .replace(/\[REVIEW_LINK\]/g, reviewLink);
+}
 
 // SmartPlan step shape (stored as JSON in SmartPlan.steps)
 interface PlanStep {
@@ -55,7 +78,7 @@ export async function advanceEnrollments(): Promise<{ fired: number; completed: 
     where: { active: true },
     include: {
       plan: true,
-      lead: { select: { id: true, name: true, phone: true, email: true, stage: true } },
+      lead: { select: { id: true, name: true, firstName: true, lastName: true, address: true, phone: true, email: true, stage: true } },
     },
   });
 
@@ -115,8 +138,9 @@ export async function advanceEnrollments(): Promise<{ fired: number; completed: 
 
 async function fireStep(
   step: PlanStep,
-  lead: { id: string; name: string; phone: string | null; email: string | null; stage: string }
+  lead: { id: string; name: string; firstName?: string | null; lastName?: string | null; address?: string | null; phone: string | null; email: string | null; stage: string }
 ) {
+  const message = renderMessage(step.message, lead);
   switch (step.method) {
     case "text": {
       if (!lead.phone) return;
@@ -126,7 +150,7 @@ async function fireStep(
         body: JSON.stringify({
           leadId: lead.id,
           to: lead.phone,
-          message: step.message,
+          message,
           logActivity: true,
         }),
       });
@@ -140,8 +164,8 @@ async function fireStep(
         body: JSON.stringify({
           leadId: lead.id,
           to: lead.email,
-          subject: step.subject ?? "Following up",
-          body: step.message,
+          subject: renderMessage(step.subject ?? "Following up", lead),
+          body: message,
         }),
       });
       break;
@@ -151,7 +175,7 @@ async function fireStep(
       await prisma.task.create({
         data: {
           leadId: lead.id,
-          title: step.message,
+          title: message,
           dueDate: new Date(), // due now
           priority: step.method === "call_reminder" ? "high" : "medium",
           done: false,
@@ -160,6 +184,35 @@ async function fireStep(
       break;
     }
   }
+}
+
+/** Find the installed review SmartPlan, or install it from the template. Returns planId or null. */
+export async function getOrCreateReviewPlan(): Promise<string | null> {
+  const tpl = getTemplate(REVIEW_TEMPLATE_ID);
+  if (!tpl) return null;
+  const existing = await prisma.smartPlan.findFirst({ where: { name: tpl.name } });
+  if (existing) return existing.id;
+  const created = await prisma.smartPlan.create({
+    data: {
+      name: tpl.name,
+      description: tpl.description,
+      triggerType: tpl.triggerType,
+      steps: JSON.stringify(tpl.steps),
+    },
+  });
+  return created.id;
+}
+
+/**
+ * Auto-enroll a just-closed lead in the post-close review-ask sequence.
+ * GATED: no-op unless GOOGLE_REVIEW_LINK is set, so review texts never go out
+ * with an unfilled link. Idempotent via enrollLead.
+ */
+export async function autoEnrollReviewOnClose(leadId: string): Promise<void> {
+  if (!process.env.GOOGLE_REVIEW_LINK) return; // dormant until the real review link is configured
+  const planId = await getOrCreateReviewPlan();
+  if (!planId) return;
+  await enrollLead(planId, leadId).catch(() => {});
 }
 
 /** Get enrollment status for a plan+lead combo */

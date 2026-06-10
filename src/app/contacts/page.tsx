@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { UserPlus, Search } from "lucide-react";
 import ContactQuickPanel from "@/components/ContactQuickPanel";
@@ -61,7 +61,7 @@ const SMART_FILTERS = [
     daysOf(l.lastContactDate) >= 7 && l.stage !== "closed" },
 ];
 
-export default function Contacts() {
+function ContactsInner() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -270,7 +270,7 @@ export default function Contacts() {
         <div
           onClick={() => setAddModalOpen(false)}
           style={{
-            position: "fixed", inset: 0, background: "rgba(0,0,0,0.65)",
+            position: "fixed", inset: 0, background: "rgba(17,24,39,0.35)",
             backdropFilter: "blur(6px)", zIndex: 1000,
             display: "flex", alignItems: "center", justifyContent: "center", padding: "16px",
           }}
@@ -280,7 +280,7 @@ export default function Contacts() {
             style={{
               background: "var(--aire-card-warm)", border: "1px solid var(--aire-border-2)",
               borderRadius: "16px", padding: "24px", width: "100%", maxWidth: "420px",
-              boxShadow: "0 24px 80px rgba(0,0,0,0.7)",
+              boxShadow: "var(--shadow-float-hover)",
               animation: "scale-in 180ms var(--ease-out-expo) both",
             }}
           >
@@ -339,5 +339,13 @@ export default function Contacts() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function Contacts() {
+  return (
+    <Suspense>
+      <ContactsInner />
+    </Suspense>
   );
 }

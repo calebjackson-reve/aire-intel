@@ -239,7 +239,7 @@ export default function SmartPlans() {
 
       {/* Create Plan Modal */}
       {creating && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(9,9,11,0.62)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: "20px", backdropFilter: "blur(8px)" }}>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(17,24,39,0.30)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: "20px", backdropFilter: "blur(8px)" }}>
           <div className="glass" style={{ padding: "28px", width: "100%", maxWidth: "680px", maxHeight: "90vh", overflowY: "auto" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
               <div>
@@ -305,7 +305,7 @@ export default function SmartPlans() {
 
             {/* Stream output */}
             {(streamText || generating) && generatedSteps.length === 0 && (
-              <div ref={streamRef} style={{ background: "rgba(255,255,255,.03)", border: "1px solid var(--aire-glass-line)", borderRadius: "10px", padding: "14px", maxHeight: "160px", overflowY: "auto", fontSize: "12px", color: "var(--white-70)", fontFamily: "monospace", lineHeight: "1.5", marginBottom: "16px" }}>
+              <div ref={streamRef} style={{ background: "rgba(0,0,0,0.04)", border: "1px solid var(--aire-border)", borderRadius: "10px", padding: "14px", maxHeight: "160px", overflowY: "auto", fontSize: "12px", color: "var(--aire-text-2)", fontFamily: "monospace", lineHeight: "1.5", marginBottom: "16px" }}>
                 {streamText || "Thinking…"}
               </div>
             )}
@@ -318,7 +318,7 @@ export default function SmartPlans() {
                 </p>
                 <div style={{ display: "flex", flexDirection: "column", gap: "8px", maxHeight: "300px", overflowY: "auto" }}>
                   {generatedSteps.map((step, i) => (
-                    <div key={i} style={{ display: "flex", gap: "12px", padding: "12px", background: "rgba(255,255,255,.025)", borderRadius: "10px", border: "1px solid var(--aire-glass-line)", borderLeft: `3px solid ${METHOD_COLORS[step.method] ?? "var(--aire-glass-line)"}` }}>
+                    <div key={i} style={{ display: "flex", gap: "12px", padding: "12px", background: "rgba(255,255,255,0.80)", borderRadius: "10px", border: "1px solid rgba(255,255,255,0.90)", boxShadow: "var(--shadow-xs)", borderLeft: `3px solid ${METHOD_COLORS[step.method] ?? "var(--aire-border)"}` }}>
                       <div style={{ minWidth: "44px", textAlign: "center" }}>
                         <div className="disp" style={{ fontSize: "18px", color: "#fff" }}>D{step.day}</div>
                         <div style={{ fontSize: "9px", letterSpacing: "0.10em", color: METHOD_COLORS[step.method], fontWeight: 600 }}>{step.method.toUpperCase()}</div>
@@ -507,7 +507,7 @@ function TemplatesEmptyState({
 
         <button
           onClick={onCreateCustom}
-          style={{ marginTop: "6px", fontSize: "11px", letterSpacing: "0.14em", padding: "12px", background: "transparent", color: "var(--white-50)", border: "1px dashed var(--aire-glass-line)", borderRadius: "10px", cursor: "pointer", width: "100%", fontWeight: 600 }}
+          style={{ marginTop: "6px", fontSize: "11px", letterSpacing: "0.14em", padding: "12px", background: "transparent", color: "var(--aire-text-2)", border: "1px dashed var(--aire-border-2)", borderRadius: "10px", cursor: "pointer", width: "100%", fontWeight: 600 }}
         >
           OR CREATE FROM SCRATCH WITH AI →
         </button>

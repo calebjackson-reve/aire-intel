@@ -128,20 +128,26 @@ function CreatePost() {
   }
 
   return (
-    <div style={{ padding: "32px 40px 40px 80px", maxWidth: "1280px", margin: "0 auto" }}>
-      <div style={{ marginBottom: "32px" }}>
-        <p style={{ fontSize: "11px", letterSpacing: "0.20em", color: "var(--aire-muted)", marginBottom: "8px" }}>
+    <div style={{ padding: "32px 40px 60px", maxWidth: "1280px", margin: "0 auto" }}>
+
+      {/* ── Hero header with floating visual ── */}
+      <div style={{ marginBottom: "36px", position: "relative", overflow: "hidden", borderRadius: "24px", padding: "32px 36px", background: "linear-gradient(135deg, #FBBF24 0%, #F97316 60%, #EA580C 100%)", boxShadow: "0 20px 60px rgba(245,158,11,0.30)" }}>
+        <div style={{ position: "absolute", top: -40, right: -20, width: 200, height: 200, borderRadius: "50%", background: "rgba(255,255,255,0.08)", pointerEvents: "none" }} />
+        <div style={{ position: "absolute", bottom: -60, right: 80, width: 160, height: 160, borderRadius: "50%", background: "rgba(255,255,255,0.05)", pointerEvents: "none" }} />
+        <p style={{ fontSize: "10px", letterSpacing: "0.22em", color: "rgba(255,255,255,0.65)", marginBottom: "10px", fontWeight: 600 }}>
           POST ENGINE
         </p>
-        <h1 className="font-display" style={{ fontSize: "44px", color: "var(--aire-text)", lineHeight: 1.05 }}>
+        <h1 className="font-display" style={{ fontSize: "40px", color: "#fff", lineHeight: 1.05, marginBottom: "10px" }}>
           Create Post
         </h1>
-        <div style={{ width: "36px", height: "2px", background: "var(--aire-coral)", marginTop: "14px", animation: "coral-sweep 700ms cubic-bezier(0.65,0,0.35,1) 200ms both" }} />
+        <p style={{ fontSize: "13px", color: "rgba(255,255,255,0.75)", lineHeight: 1.5 }}>
+          Raw notes in. Rêve-quality content out.
+        </p>
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
         {/* Form */}
-        <form onSubmit={generate} className="card-light" style={{ padding: "26px 26px", display: "flex", flexDirection: "column", gap: "20px" }}>
+        <form onSubmit={generate} className="glass-card" style={{ padding: "26px", display: "flex", flexDirection: "column", gap: "20px" }}>
           <div>
             <label style={labelStyle}>POST TYPE</label>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "8px", marginTop: "10px" }}>
@@ -254,7 +260,7 @@ function CreatePost() {
                 <OutputSection title="MOTION SPEC" content={sections.motionSpec} />
               )}
               {streaming && !sections.caption && (
-                <div className="card-ink" style={{ padding: "26px" }}>
+                <div className="card-output" style={{ padding: "26px" }}>
                   <p style={{ fontSize: "13px", color: "var(--aire-muted-inv)", fontStyle: "italic" }}>
                     Writing...
                   </p>
@@ -292,7 +298,7 @@ function CreatePost() {
 
 function OutputSection({ title, content }: { title: string; content: string }) {
   return (
-    <div className="card-ink" style={{ padding: "22px", animation: "fade-up 600ms cubic-bezier(0.22,1,0.36,1) both" }}>
+    <div className="card-output" style={{ padding: "22px", animation: "fade-up 600ms cubic-bezier(0.22,1,0.36,1) both" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
         <span style={{ fontSize: "10px", letterSpacing: "0.18em", color: "var(--aire-muted-inv)" }}>
           {title}

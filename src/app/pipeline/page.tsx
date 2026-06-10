@@ -353,8 +353,8 @@ function AddLeadForm({
 }
 
 const inputStyle: React.CSSProperties = {
-  background: "rgba(255,255,255,.04)",
-  border: "1px solid var(--aire-glass-line)",
+  background: "rgba(255,255,255,0.80)",
+  border: "1px solid var(--aire-border)",
   borderRadius: "8px",
   padding: "8px 10px",
   fontSize: "13px",
@@ -531,7 +531,7 @@ export default function Pipeline() {
           style={{
             position: "fixed",
             inset: 0,
-            background: "rgba(9,9,11,0.62)",
+            background: "rgba(17,24,39,0.30)",
             backdropFilter: "blur(8px)",
             WebkitBackdropFilter: "blur(8px)",
             display: "flex",

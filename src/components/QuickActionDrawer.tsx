@@ -181,7 +181,7 @@ export default function QuickActionDrawer({
           style={{
             position: "fixed",
             inset: 0,
-            background: "rgba(9,9,11,0.6)",
+            background: "rgba(17,24,39,0.30)",
             zIndex: 90,
             opacity: open ? 1 : 0,
             transition: "opacity 200ms",

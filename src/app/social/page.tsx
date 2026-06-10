@@ -101,15 +101,16 @@ export default function SocialPage() {
   }
 
   return (
-    <div style={{ padding: "32px 40px 40px 80px", maxWidth: "1360px", margin: "0 auto" }}>
+    <div style={{ padding: "32px 40px 60px", maxWidth: "1360px", margin: "0 auto" }}>
 
-      {/* Header */}
-      <div style={{ marginBottom: "28px" }}>
-        <p style={{ fontSize: "11px", letterSpacing: "0.20em", color: "var(--aire-muted)", marginBottom: "8px" }}>SOCIAL</p>
-        <h1 className="font-display" style={{ fontSize: "44px", color: "var(--aire-text)", lineHeight: 1.05 }}>
+      {/* Hero header */}
+      <div style={{ marginBottom: "28px", position: "relative", overflow: "hidden", borderRadius: "24px", padding: "28px 34px", background: "linear-gradient(135deg, #065F46 0%, #0A7C5C 100%)", boxShadow: "0 20px 60px rgba(6,95,70,0.25)" }}>
+        <div style={{ position: "absolute", top: -30, right: -10, width: 160, height: 160, borderRadius: "50%", background: "rgba(255,255,255,0.05)", pointerEvents: "none" }} />
+        <p style={{ fontSize: "10px", letterSpacing: "0.22em", color: "rgba(255,255,255,0.55)", marginBottom: "10px", fontWeight: 600 }}>SOCIAL</p>
+        <h1 className="font-display" style={{ fontSize: "38px", color: "#fff", lineHeight: 1.05, marginBottom: "8px" }}>
           Post to your audience
         </h1>
-        <div style={{ width: "36px", height: "2px", background: "var(--aire-coral)", marginTop: "14px" }} />
+        <p style={{ fontSize: "13px", color: "rgba(255,255,255,0.65)" }}>Facebook · Instagram · LinkedIn</p>
       </div>
 
       {/* Connection chips */}
@@ -118,13 +119,13 @@ export default function SocialPage() {
           { key: "facebook", label: "Facebook", con: status?.facebook.connected, sub: status?.facebook.pageId ? `Page ${status.facebook.pageId}` : "Not connected" },
           { key: "instagram", label: "Instagram", con: status?.instagram.connected, sub: status?.instagram.igId ? `@${status.instagram.igId}` : "Not connected" },
         ].map(({ key, label, con, sub }) => (
-          <span key={key} className={con ? "pill-mint" : "pill-coral"} style={{
+          <span key={key} style={{
             display: "inline-flex", alignItems: "center", gap: "8px",
             padding: "6px 14px", borderRadius: "999px",
             fontSize: "11px", letterSpacing: "0.04em",
-            border: con ? "1px solid rgba(184,230,208,0.5)" : "1px solid rgba(238,129,114,0.25)",
-            background: con ? "var(--aire-mint-soft)" : "var(--aire-coral-soft)",
-            color: con ? "#2d7a55" : "var(--aire-coral-deep)",
+            border: con ? "1px solid rgba(6,95,70,0.20)" : "1px solid rgba(245,158,11,0.25)",
+            background: con ? "rgba(6,95,70,0.07)" : "rgba(245,158,11,0.08)",
+            color: con ? "var(--aire-green)" : "#92400E",
           }}>
             <span style={{
               width: "6px", height: "6px", borderRadius: "50%",
@@ -314,7 +315,7 @@ export default function SocialPage() {
                   color: "var(--aire-text-inv)",
                   outline: "none",
                   fontFamily: "inherit",
-                  colorScheme: "dark",
+                  colorScheme: "light",
                 }}
               />
             </div>

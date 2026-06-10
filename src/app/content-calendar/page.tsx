@@ -124,7 +124,7 @@ export default function ContentCalendar() {
           <div className="cc-lg"><span className="sw" style={{ background: "var(--coral)" }} />Listing · Sold · Under Contract</div>
           <div className="cc-lg"><span className="sw" style={{ background: "var(--cream)" }} />Client story · feature</div>
           <div className="cc-lg"><span className="sw" style={{ background: "var(--blue)" }} />Market · educational</div>
-          <div className="cc-lg"><span className="sw" style={{ background: "#fff" }} />Personal story</div>
+          <div className="cc-lg"><span className="sw" style={{ background: "rgba(0,0,0,0.18)" }} />Personal story</div>
         </div>
 
         <div className="cc-cal">
@@ -171,7 +171,7 @@ export default function ContentCalendar() {
             ) : (
               <div style={{ display: "grid", gap: "10px", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))" }}>
                 {selectedPosts.map(p => (
-                  <div key={p.id} style={{ background: "rgba(255,255,255,.025)", borderRadius: "11px", padding: "14px", border: "1px solid var(--aire-glass-line)", borderLeft: `3px solid ${PLATFORM_COLORS[p.platform] ?? "var(--aire-glass-line)"}` }}>
+                  <div key={p.id} style={{ background: "rgba(255,255,255,0.80)", borderRadius: "11px", padding: "14px", border: "1px solid rgba(255,255,255,0.90)", borderLeft: `3px solid ${PLATFORM_COLORS[p.platform] ?? "var(--aire-border)"}`, boxShadow: "var(--shadow-card)" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
                       <span style={{ fontSize: "9px", letterSpacing: "0.12em", color: PLATFORM_COLORS[p.platform] ?? "var(--white-40)", fontWeight: 600 }}>{p.platform.toUpperCase()}</span>
                       <span style={{ fontSize: "10px", color: "var(--white-40)" }}>{fmtTime(p.scheduledAt)}</span>

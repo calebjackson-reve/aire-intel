@@ -27,5 +27,14 @@ loadEnvFile(".env.local", true); // .env.local always wins
 
 console.log("[next.config] ANTHROPIC_API_KEY present:", !!process.env.ANTHROPIC_API_KEY);
 
-const nextConfig: NextConfig = {};
+const nextConfig: NextConfig = {
+  // Native / heavy server-only packages must not be bundled by Turbopack.
+  serverExternalPackages: [
+    "@resvg/resvg-js",
+    "satori",
+    "@prisma/adapter-pg",
+    "@prisma/client",
+    "better-sqlite3",
+  ],
+};
 export default nextConfig;

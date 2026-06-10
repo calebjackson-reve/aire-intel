@@ -1,6 +1,9 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { mapLoftyLeadToAire } from "@/lib/lofty";
+import { generateDraft } from "@/lib/draft-agent";
+import { enrollLead } from "@/lib/smart-plan-executor";
+import { getTodayCT } from "@/lib/brief-date";
 
 // Lofty posts events here when leads are created/updated
 // Register this URL in Lofty: Settings > Integrations > Webhooks
@@ -18,17 +21,100 @@ export async function POST(request: NextRequest) {
 
   try {
     const existing = await prisma.lead.findUnique({ where: { loftyId: data.loftyId } });
+    let lead;
 
     if (existing) {
-      await prisma.lead.update({ where: { id: existing.id }, data });
+      lead = await prisma.lead.update({ where: { id: existing.id }, data });
     } else {
-      await prisma.lead.create({ data });
+      lead = await prisma.lead.create({ data });
     }
 
-    return Response.json({ ok: true, event, loftyId: data.loftyId });
+    // New lead intake agent steps (non-blocking — errors are caught and logged)
+    const isNew = !existing;
+    if (isNew) {
+      await runNewLeadIntake(lead.id).catch((err) =>
+        console.error("[lofty-webhook] intake error:", err)
+      );
+    }
+
+    return Response.json({ ok: true, event, loftyId: data.loftyId, leadId: lead.id, isNew });
   } catch (err) {
     return Response.json({ ok: false, error: String(err) }, { status: 500 });
   }
+}
+
+async function runNewLeadIntake(leadId: string) {
+  const today = getTodayCT();
+
+  // 1. Auto-enroll in "new_lead" SmartPlan if one exists
+  const newLeadPlan = await prisma.smartPlan.findFirst({
+    where: { triggerType: "new_lead", active: true },
+    select: { id: true },
+  });
+  if (newLeadPlan) {
+    await enrollLead(newLeadPlan.id, leadId).catch(() => null);
+  }
+
+  // 2. Generate a first-outreach draft and queue it
+  let draftBody = "";
+  let draftChannel: "text" | "email" = "text";
+  let messageDraftId: string | undefined;
+
+  try {
+    const draft = await generateDraft({ leadId, source: "followup" });
+    draftBody = draft.body;
+    draftChannel = draft.channel;
+
+    const savedDraft = await prisma.messageDraft.create({
+      data: {
+        leadId,
+        channel: draftChannel,
+        subject: draft.subject ?? null,
+        body: draftBody,
+        status: "pending",
+        source: "followup",
+      },
+    });
+    messageDraftId = savedDraft.id;
+  } catch {
+    // Draft generation failed — queue a placeholder so the lead still surfaces
+    draftBody = "(Draft generation failed — write manually)";
+  }
+
+  const lead = await prisma.lead.findUnique({
+    where: { id: leadId },
+    select: { name: true, phone: true, email: true },
+  });
+
+  await prisma.actionQueue.create({
+    data: {
+      type: "draft_message",
+      agentType: "new_lead_intake",
+      leadId,
+      priority: 1,
+      briefDate: today,
+      requiresApproval: true,
+      payload: {
+        messageDraftId: messageDraftId ?? null,
+        leadId,
+        leadName: lead?.name ?? "New Lead",
+        channel: draftChannel,
+        body: draftBody,
+        toPhone: lead?.phone ?? null,
+        toEmail: lead?.email ?? null,
+      },
+    },
+  });
+
+  // 3. Dashboard notification
+  await prisma.notification.create({
+    data: {
+      type: "lead_assigned",
+      title: `New lead: ${lead?.name ?? "Unknown"}`,
+      body: "First-outreach draft queued for your approval.",
+      href: `/contacts/${leadId}`,
+    },
+  });
 }
 
 // Lofty may send a GET to verify the webhook URL

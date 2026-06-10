@@ -1,0 +1,9 @@
+=== AIRE Loop Build-All: Tue Jun  9 22:04:04 CDT 2026 ===
+──────────────────────────────────────────────────
+──────────────────────────────────────────────────
+START 01-inbound-reply-handler
+=== START 01-inbound-reply-handler Tue Jun  9 22:04:04 CDT 2026 ===
+Error: Reached max turns (10)FAIL  01-inbound-reply-handler (198s) exit=1
+──────────────────────────────────────────────────
+START 03-calendly-post-meeting-followup
+=== START 03-calendly-post-meeting-followup Tue Jun  9 22:07:22 CDT 2026 ===

@@ -70,6 +70,7 @@ model Lead {
   linkedInOutreach LinkedInOutreach[]
   messageDrafts    MessageDraft[]
   propertyIntel    PropertyIntel?
+  actionQueue      ActionQueue[]
 }
 
 // Homeowner / property attributes imported from a PropStream CSV export (the only
@@ -201,9 +202,78 @@ model GeneratedPost {
 }
 
 model DailyBrief {
-  id        String   @id @default(cuid())
-  content   String
-  date      DateTime @default(now())
+  id               String    @id @default(cuid())
+  date             String    @unique  // "2026-06-09" — one per day
+  nonNegotiables   Json?
+  goingCold        Json?
+  owePeople        Json?
+  contentQueued    Json?
+  marketMovement   Json?
+  smsSummary       String?
+  smsDeliveredAt   DateTime?
+  emailDeliveredAt DateTime?
+  pushDeliveredAt  DateTime?
+  assembledAt      DateTime  @default(now())
+  agentRunId       String?
+}
+
+model ActionQueue {
+  id               String    @id @default(cuid())
+  type             String    // draft_message | post_content | create_lofty_task | send_client_email | follow_up_text
+  payload          Json
+  status           String    @default("pending")
+  agentType        String
+  leadId           String?
+  lead             Lead?     @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  requiresApproval Boolean   @default(true)
+  priority         Int       @default(5)
+  briefDate        String?
+  approvedAt       DateTime?
+  executedAt       DateTime?
+  skippedAt        DateTime?
+  failedAt         DateTime?
+  failReason       String?
+  scheduledFor     DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([status])
+  @@index([briefDate])
+  @@index([leadId])
+}
+
+model AgentRun {
+  id             String    @id @default(cuid())
+  agentType      String
+  status         String    // running | completed | failed | partial
+  startedAt      DateTime  @default(now())
+  completedAt    DateTime?
+  itemsProcessed Int       @default(0)
+  actionsQueued  Int       @default(0)
+  errorLog       Json?
+  durationMs     Int?
+
+  @@index([agentType, startedAt])
+}
+
+model ZillowHotListing {
+  id           String   @id @default(cuid())
+  zpid         String   @unique
+  address      String
+  city         String
+  state        String
+  zip          String
+  price        Float?
+  beds         Int?
+  baths        Float?
+  sqft         Int?
+  viewCount    Int?
+  saveCount    Int?
+  daysOnMarket Int?
+  listingUrl   String
+  photoUrl     String?
+  fetchedAt    DateTime @default(now())
+  usedInPostId String?
 }
 
 model BuyerSearch {
@@ -392,4 +462,126 @@ model LinkedInOutreach {
   notes       String?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+}
+
+// ============================================================
+// CONTENT-FIRST CORE (rebuild) — additive, see plan keen-watching-metcalfe
+// ============================================================
+
+/// The creative unit. Evolves GeneratedPost; one row per post/carousel/reel.
+model ContentProject {
+  id              String   @id @default(cuid())
+  type            String   // just_listed | just_sold | client_story | market_update | educational | reel
+  status          String   @default("idea") // idea | drafting | ready | scheduled | published | archived
+  brief           String?  // raw notes the agent enters
+  captionDraft    String?  // AI-generated caption (for the learning loop)
+  captionFinal    String?  // what was actually published (compare vs draft)
+  slideSpec       Json?    // structured per-slide JSON the renderer consumes
+  motionSpec      String?
+  hashtags        Json?
+  clientRefId     String?
+  clientRef       ClientRef? @relation(fields: [clientRefId], references: [id], onDelete: SetNull)
+  listingAddress  String?
+  price           Float?
+  platform        String?  // comma-separated: instagram,facebook
+  scheduledFor    DateTime?
+  publishedAt     DateTime?
+  externalPostIds Json?    // { instagram: "...", facebook: "..." }
+  trendSignalId   String?
+  trendSignal     TrendSignal? @relation(fields: [trendSignalId], references: [id], onDelete: SetNull)
+  media           MediaAsset[]
+  renderJobs      RenderJob[]
+  performance     ContentPerformance[]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+/// Source photos + rendered slides/stories/reels. Public HTTPS URLs (Blob/S3).
+model MediaAsset {
+  id               String   @id @default(cuid())
+  contentProjectId String?
+  contentProject   ContentProject? @relation(fields: [contentProjectId], references: [id], onDelete: Cascade)
+  kind             String   // source_photo | carousel_slide | story | reel
+  url              String
+  blobPathname     String?  // for deletion from blob store
+  width            Int?
+  height           Int?
+  durationMs       Int?     // reels only
+  slideIndex       Int?     // ordering within a carousel
+  layoutVariant    String?  // which template produced it
+  mimeType         String
+  bytes            Int?
+  createdAt        DateTime @default(now())
+}
+
+/// Async render state for heavy outputs (reels).
+model RenderJob {
+  id               String   @id @default(cuid())
+  contentProjectId String
+  contentProject   ContentProject @relation(fields: [contentProjectId], references: [id], onDelete: Cascade)
+  assetType        String   // carousel | story | reel
+  status           String   @default("queued") // queued | rendering | done | failed
+  error            String?
+  resultAssetId    String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+/// Learning-loop sink: Meta insights snapshotted per published post, joined by externalPostId.
+model ContentPerformance {
+  id               String   @id @default(cuid())
+  contentProjectId String?
+  contentProject   ContentProject? @relation(fields: [contentProjectId], references: [id], onDelete: SetNull)
+  externalPostId   String
+  platform         String
+  publishedAt      DateTime?
+  reach            Int?
+  impressions      Int?
+  engagement       Int?
+  saves            Int?
+  shares           Int?
+  comments         Int?
+  clicks           Int?
+  engagementRate   Float?
+  fetchedAt        DateTime @default(now())
+
+  @@unique([externalPostId, platform])
+}
+
+/// Trend research storage. Trends decay (expiresAt).
+model TrendSignal {
+  id        String   @id @default(cuid())
+  source    String   // manual | meta_audit | web_research | skill
+  topic     String
+  hook      String?
+  detail    String?
+  score     Float?
+  status    String   @default("new") // new | queued | used | dismissed
+  expiresAt DateTime?
+  projects  ContentProject[]
+  createdAt DateTime @default(now())
+}
+
+/// Reusable layout/motion presets for the visual engine.
+model BrandTemplate {
+  id         String   @id @default(cuid())
+  name       String
+  type       String
+  configJson Json?
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now())
+}
+
+/// Thin, read-only mirror of Lofty leads — used only to tag clients in content.
+model ClientRef {
+  id                String   @id @default(cuid())
+  loftyId           String?  @unique
+  name              String
+  type              String?
+  stage             String?
+  lastClosedAddress String?
+  instagramHandle   String?
+  tags              String?
+  syncedAt          DateTime @default(now())
+  projects          ContentProject[]
 }

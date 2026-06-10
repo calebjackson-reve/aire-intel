@@ -1,0 +1,177 @@
+import { prisma } from "@/lib/prisma";
+import { generateDraft } from "@/lib/draft-agent";
+import { verifyCronSecret, cronUnauthorized } from "@/lib/cron-auth";
+import { startRun, finishRun, failRun } from "@/lib/agent-run";
+import { getTodayCT } from "@/lib/brief-date";
+
+// Transaction Watchdog — runs at 6:00 AM CT (12 UTC) via Vercel cron
+// Finds active DotloopLoop records and Lead milestones due within 48h
+// Creates urgent Tasks + ActionQueue items for client communication
+
+export async function POST(request: Request) {
+  if (!verifyCronSecret(request.headers.get("authorization"))) {
+    return cronUnauthorized();
+  }
+  return runWatchdog();
+}
+
+// Also callable via GET for manual dev trigger (no auth required in local dev)
+export async function GET() {
+  return runWatchdog();
+}
+
+async function runWatchdog() {
+  const runId = await startRun("transaction_watchdog");
+  const today = getTodayCT();
+  const errors: unknown[] = [];
+  let itemsProcessed = 0;
+  let actionsQueued = 0;
+
+  try {
+    const now = new Date();
+    const in48h = new Date(now.getTime() + 48 * 60 * 60 * 1000);
+    const in24h = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+
+    // 1. Scan DotloopLoop records with closing/acceptance dates in range
+    const activeLoops = await prisma.dotloopLoop.findMany({
+      where: {
+        status: { in: ["UNDER_CONTRACT", "PRE_OFFER"] },
+        OR: [
+          { closingDate: { lte: in48h, gte: now } },
+          { expectedClosingDate: { lte: in48h, gte: now } },
+          { acceptanceDate: { lte: in48h, gte: now } },
+        ],
+      },
+      include: { lead: true },
+    });
+
+    for (const loop of activeLoops) {
+      itemsProcessed++;
+      const closingDate = loop.closingDate ?? loop.expectedClosingDate;
+      const isUrgent = closingDate && closingDate <= in24h;
+      const leadName = loop.lead?.name ?? loop.name;
+      const leadId = loop.leadId;
+
+      try {
+        // Create an urgent task
+        await prisma.task.create({
+          data: {
+            leadId,
+            title: `[Watchdog] ${isUrgent ? "CLOSING TODAY" : "Closing in 48h"}: ${loop.streetAddress ?? loop.name}`,
+            description: closingDate
+              ? `Closing scheduled for ${closingDate.toLocaleDateString("en-US", { timeZone: "America/Chicago" })}`
+              : undefined,
+            dueDate: closingDate ?? now,
+            priority: isUrgent ? "urgent" : "high",
+          },
+        });
+
+        // Queue a client update email
+        let emailBody = `Hi ${leadName},\n\nJust confirming your closing is scheduled for ${closingDate?.toLocaleDateString("en-US", { timeZone: "America/Chicago" })}. Please bring your ID and the wire confirmation to the title company.\n\nLet me know if you have any questions — Caleb`;
+
+        if (leadId) {
+          try {
+            const draft = await generateDraft({
+              leadId,
+              channel: "email",
+              source: "followup",
+              instruction: `Write a brief, professional pre-closing check-in. Closing is ${isUrgent ? "today" : "within 48 hours"}. Remind them what to bring. Keep it under 5 sentences.`,
+            });
+            emailBody = draft.body;
+          } catch {
+            // Use default copy
+          }
+        }
+
+        const lead = loop.lead;
+        if (lead?.email) {
+          await prisma.actionQueue.create({
+            data: {
+              type: "send_client_email",
+              agentType: "transaction_watchdog",
+              leadId,
+              priority: isUrgent ? 1 : 2,
+              briefDate: today,
+              requiresApproval: true,
+              payload: {
+                to: lead.email,
+                subject: isUrgent
+                  ? `Closing today — ${loop.streetAddress ?? "your property"}`
+                  : `Closing in 2 days — ${loop.streetAddress ?? "your property"}`,
+                body: emailBody,
+                leadId,
+                leadName,
+                closingDate: closingDate?.toISOString(),
+                loopId: loop.id,
+              },
+            },
+          });
+          actionsQueued++;
+        }
+
+        // Dashboard notification for urgent closings
+        if (isUrgent) {
+          await prisma.notification.create({
+            data: {
+              type: "task_due",
+              title: `Closing today: ${loop.streetAddress ?? loop.name}`,
+              body: "Transaction Watchdog flagged this as closing today.",
+              href: leadId ? `/contacts/${leadId}` : undefined,
+            },
+          });
+        }
+      } catch (err) {
+        errors.push({ loop: loop.id, error: String(err) });
+      }
+    }
+
+    // 2. Scan Lead records with closingDate in 48h
+    const contractLeads = await prisma.lead.findMany({
+      where: {
+        stage: "under_contract",
+        closingDate: { lte: in48h, gte: now },
+      },
+      select: { id: true, name: true, email: true, phone: true, closingDate: true, address: true },
+    });
+
+    for (const lead of contractLeads) {
+      itemsProcessed++;
+      const isUrgent = lead.closingDate! <= in24h;
+
+      try {
+        // Idempotency: check if task already exists
+        const existingTask = await prisma.task.findFirst({
+          where: { leadId: lead.id, title: { contains: "[Watchdog]" }, done: false },
+        });
+
+        if (!existingTask) {
+          await prisma.task.create({
+            data: {
+              leadId: lead.id,
+              title: `[Watchdog] ${isUrgent ? "Closing TODAY" : "Closing in 48h"}: ${lead.name}`,
+              dueDate: lead.closingDate!,
+              priority: isUrgent ? "urgent" : "high",
+            },
+          });
+          actionsQueued++;
+        }
+      } catch (err) {
+        errors.push({ leadId: lead.id, error: String(err) });
+      }
+    }
+
+    await finishRun(runId, { itemsProcessed, actionsQueued, errorLog: errors });
+
+    return Response.json({
+      ok: true,
+      runId,
+      itemsProcessed,
+      actionsQueued,
+      loopsScanned: activeLoops.length,
+      contractLeadsScanned: contractLeads.length,
+    });
+  } catch (err) {
+    await failRun(runId, err);
+    return Response.json({ ok: false, error: String(err) }, { status: 500 });
+  }
+}
