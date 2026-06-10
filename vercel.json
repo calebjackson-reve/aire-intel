@@ -9,6 +9,7 @@
     { "path": "/api/agents/morning-brief",        "schedule": "0 11 * * *" },
     { "path": "/api/agents/transaction-watchdog", "schedule": "0 12 * * *" },
     { "path": "/api/agents/revival",              "schedule": "0 1 * * *"  },
-    { "path": "/api/cron/meeting-followup",        "schedule": "*/15 * * * *" }
+    { "path": "/api/cron/meeting-followup",        "schedule": "*/15 * * * *" },
+    { "path": "/api/agents/error-autofix",         "schedule": "0 7 * * *"   }
   ]
 }
