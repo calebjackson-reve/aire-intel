@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
   const stream = new ReadableStream({
     async start(controller) {
       const anthropicStream = getClient().messages.stream({
-        model: "claude-sonnet-4-5",
+        model: "claude-fable-5",
         max_tokens: 512,
         system: [
           {

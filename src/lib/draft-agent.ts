@@ -89,7 +89,7 @@ export async function generateDraft(opts: {
   const system = await buildSystem();
 
   const response = await getClient().messages.create({
-    model: "claude-haiku-4-5",
+    model: "claude-fable-5",
     max_tokens: 400,
     system: [{ type: "text", text: system, cache_control: { type: "ephemeral" } }],
     messages: [

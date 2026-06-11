@@ -381,7 +381,7 @@ async function generateViralCaption(listing: {
       "content-type": "application/json",
     },
     body: JSON.stringify({
-      model: "claude-haiku-4-5",
+      model: "claude-fable-5",
       max_tokens: 150,
       messages: [
         {

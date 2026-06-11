@@ -383,7 +383,7 @@ Operating rules:
         // Agentic loop — run until no more tool calls
         for (let round = 0; round < 5; round++) {
           const response = await client.messages.create({
-            model: "claude-sonnet-4-6",
+            model: "claude-fable-5",
             max_tokens: 1024,
             system: systemPrompt,
             tools: TOOLS,
