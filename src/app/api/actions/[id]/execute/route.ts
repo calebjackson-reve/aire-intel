@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getTwilioConfig, sendSMS, normalizePhone } from "@/lib/twilio";
 import { getSendGridConfig, sendEmail } from "@/lib/sendgrid";
+import { sendMessengerMessage } from "@/lib/messenger";
 
 type ActionPayload = Record<string, unknown>;
 
@@ -80,7 +81,24 @@ async function executeDraftMessage(
   // Send the message
   let sendResult: Record<string, unknown> = {};
 
-  if (channel === "email") {
+  if (channel === "messenger") {
+    const psid = payload.messengerPsid as string | undefined;
+    if (!psid) throw new Error("draft_message messenger payload missing messengerPsid");
+    const result = await sendMessengerMessage(psid, body);
+
+    if (messageDraftId) {
+      await prisma.messageDraft.update({
+        where: { id: messageDraftId },
+        data: { status: "sent", sentAt: new Date() },
+      }).catch(() => null);
+    }
+    if (leadId) {
+      await prisma.contactLog.create({
+        data: { leadId, method: "facebook_messenger", direction: "outbound", note: `Agent-executed via ActionQueue (${actionId.slice(0, 8)})` },
+      });
+    }
+    return result;
+  } else if (channel === "email") {
     const toEmail = payload.toEmail as string | undefined;
     const lead = leadId
       ? await prisma.lead.findUnique({ where: { id: leadId }, select: { email: true } })

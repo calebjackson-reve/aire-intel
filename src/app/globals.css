@@ -89,6 +89,7 @@
   --stat-blue:   #728AC5;
   --stat-amber:  #F59E0B;
   --stat-green:  #065F46;
+  --stat-plum:   #7E5EA1;
 
   /* ── Backward-compat Rêve aliases ── */
   --reve-black:        #111827;
@@ -930,7 +931,9 @@ body > * { position: relative; z-index: 1; }
 .stat-tile.blue   { background: var(--stat-blue); }
 .stat-tile.amber  { background: var(--stat-amber); }
 .stat-tile.green  { background: var(--stat-green); }
+.stat-tile.plum   { background: var(--stat-plum); }
 .stat-tile-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+.stat-tile-row.stat-tile-5 { grid-template-columns: repeat(5, 1fr); }
 @media (max-width: 1024px) { .stat-tile-row { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 600px)  { .stat-tile-row { grid-template-columns: 1fr; } }
 

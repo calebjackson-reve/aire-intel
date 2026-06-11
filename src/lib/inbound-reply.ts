@@ -15,8 +15,9 @@ async function getSettingWithDefault(key: string, fallback = ""): Promise<string
 export interface InboundReplyOpts {
   leadId: string;
   content: string;
-  channel: "text" | "email";
+  channel: "text" | "email" | "messenger";
   method: string; // value stored in ContactLog.method
+  messengerPsid?: string; // required when channel === "messenger"
 }
 
 /**
@@ -25,7 +26,7 @@ export interface InboundReplyOpts {
  * Non-throwing: all errors are logged and the caller gets a bare notification on failure.
  */
 export async function handleInboundReply(opts: InboundReplyOpts): Promise<void> {
-  const { leadId, content, channel, method } = opts;
+  const { leadId, content, channel, method, messengerPsid } = opts;
 
   const lead = await prisma.lead.findUnique({
     where: { id: leadId },
@@ -93,6 +94,7 @@ export async function handleInboundReply(opts: InboundReplyOpts): Promise<void> 
   if (existingAction) return;
 
   // ── Generate draft ───────────────────────────────────────────────────────────
+  const draftChannel = channel === "messenger" ? "text" : channel;
   let draftBody = "";
   let draftSubject: string | null = null;
   let messageDraftId: string | undefined;
@@ -102,7 +104,7 @@ export async function handleInboundReply(opts: InboundReplyOpts): Promise<void> 
       () =>
         generateDraft({
           leadId,
-          channel,
+          channel: draftChannel,
           source: "reply_to_inbound",
           instruction: `Intent classified as: ${intent}. Inbound message: "${content.slice(0, 300)}"`,
         }),
@@ -112,7 +114,7 @@ export async function handleInboundReply(opts: InboundReplyOpts): Promise<void> 
     draftSubject = draft.subject;
 
     const saved = await prisma.messageDraft.create({
-      data: { leadId, channel, subject: draftSubject, body: draftBody, status: "pending", source: "reply_to_inbound" },
+      data: { leadId, channel: draftChannel, subject: draftSubject, body: draftBody, status: "pending", source: "reply_to_inbound" },
     });
     messageDraftId = saved.id;
   } catch (err) {
@@ -139,6 +141,7 @@ export async function handleInboundReply(opts: InboundReplyOpts): Promise<void> 
         subject: draftSubject,
         toPhone: lead.phone ?? null,
         toEmail: lead.email ?? null,
+        messengerPsid: messengerPsid ?? null,
         inboundContent: content.slice(0, 500),
       },
     },

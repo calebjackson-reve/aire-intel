@@ -5,6 +5,8 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { prisma } from "./prisma";
 import { getTodayCT } from "./brief-date";
+import { getMortgageRate, getRateAlert } from "./housing-intel";
+import { getMarketStats, buildCMASummary } from "./rentcast";
 
 export interface BriefItem {
   actionQueueId?: string;
@@ -234,6 +236,196 @@ export async function assembleBrief(agentRunId?: string): Promise<AssembledBrief
             photoUrl: listing.photoUrl,
           },
           priority: 4,
+        });
+      }
+    }
+  } catch {
+    // Non-fatal
+  }
+
+  // ── 5a. Market pulse — FRED mortgage rate + Rentcast market stats ─────────
+  try {
+    const [rateAlert, brStats] = await Promise.allSettled([
+      getRateAlert(0.125),
+      getMarketStats("70808"), // Baton Rouge core zip — representative pulse
+    ]);
+
+    // Rate alert → if triggered, surface as high-priority item + queue blast drafts
+    if (rateAlert.status === "fulfilled" && rateAlert.value.triggered) {
+      const alert = rateAlert.value;
+      marketMovement.unshift({
+        type: "rate_alert",
+        title: `Rate ${alert.direction === "down" ? "Drop" : "Jump"}: ${alert.delta > 0 ? "+" : ""}${alert.delta.toFixed(3)}%`,
+        subtitle: alert.message,
+        priority: 1,
+        metadata: { delta: alert.delta, direction: alert.direction },
+      });
+
+      // Create blast drafts for active buyer leads with no recent outreach
+      const twoDaysAgo = new Date(Date.now() - 2 * 86_400_000);
+      const activeBuyers = await prisma.lead.findMany({
+        where: {
+          stage: { in: ["active", "new_lead"] },
+          phone: { not: null },
+          timeline_logs: { none: { direction: "outbound", createdAt: { gte: twoDaysAgo } } },
+        },
+        take: 20,
+        orderBy: { lastContactDate: "asc" },
+      });
+
+      for (const lead of activeBuyers) {
+        const alreadyQueued = await prisma.actionQueue.findFirst({
+          where: {
+            leadId: lead.id,
+            type: "draft_message",
+            briefDate: today,
+            payload: { path: ["trigger"], equals: "rate_alert" },
+          },
+        });
+        if (alreadyQueued) continue;
+
+        const direction = alert.direction === "down" ? "dropped" : "jumped";
+        const body = alert.direction === "down"
+          ? `Hey ${lead.name?.split(" ")[0] ?? "there"} — rates just ${direction} to ${(await getMortgageRate()).current}%. Your monthly payment on a $300k home just got about $${Math.round(Math.abs(alert.delta) * 300000 / 12 / 100)} cheaper. Wanted to make sure you heard. Worth a quick chat? — Caleb`
+          : `Hey ${lead.name?.split(" ")[0] ?? "there"} — rates moved up to ${(await getMortgageRate()).current}% this week. If you've been thinking about locking in, now might be the time to talk. — Caleb`;
+
+        await prisma.actionQueue.create({
+          data: {
+            type: "draft_message",
+            briefDate: today,
+            status: "pending",
+            priority: 2,
+            leadId: lead.id,
+            agentType: "market_intel",
+            payload: {
+              trigger: "rate_alert",
+              channel: "sms",
+              leadName: lead.name,
+              body,
+              rateDelta: alert.delta,
+              direction: alert.direction,
+            },
+          },
+        });
+      }
+    }
+
+    // Market stats snapshot
+    if (brStats.status === "fulfilled") {
+      const s = brStats.value;
+      marketMovement.push({
+        type: "market_stats",
+        title: `BR Market: Median $${Math.round((s.medianPrice ?? 0) / 1000)}k`,
+        subtitle: `${s.averageDaysOnMarket ?? "—"}d avg DOM`,
+        priority: 5,
+        metadata: { stats: s, zip: "70808" },
+      });
+    }
+  } catch {
+    // Non-fatal — brief continues without market pulse
+  }
+
+  // ── 5b. Content flywheel — Zillow viral → auto-queue post suggestions ──────
+  try {
+    const viralListings = await prisma.zillowHotListing.findMany({
+      where: { fetchedAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) } },
+      orderBy: { viewCount: "desc" },
+      take: 2,
+    });
+
+    for (const listing of viralListings) {
+      const alreadyQueued = await prisma.actionQueue.findFirst({
+        where: {
+          type: "post_content",
+          briefDate: today,
+          payload: { path: ["zpid"], equals: listing.zpid },
+        },
+      });
+      if (alreadyQueued) continue;
+
+      await prisma.actionQueue.create({
+        data: {
+          type: "post_content",
+          briefDate: today,
+          status: "pending",
+          priority: 3,
+          agentType: "content_scheduler",
+          payload: {
+            contentType: "listing_spotlight",
+            zpid: listing.zpid,
+            address: listing.address,
+            price: listing.price,
+            photoUrl: listing.photoUrl,
+            listingUrl: listing.listingUrl,
+            viewCount: listing.viewCount,
+            platform: "instagram",
+            caption: `This home in Baton Rouge just hit ${(listing.viewCount ?? 0).toLocaleString()} views on Zillow — here's why the market is watching it. 👀`,
+            trigger: "zillow_viral",
+          },
+        },
+      });
+    }
+  } catch {
+    // Non-fatal
+  }
+
+  // ── 5c. Pre-appointment CMA — auto-run comps for today's scheduled appts ───
+  try {
+    const apptKeywords = ["appointment", "listing appt", "listing presentation", "buyer consult", "showing", "cma"];
+    const apptTasks = await prisma.task.findMany({
+      where: {
+        done: false,
+        dueDate: { gte: new Date(`${today}T00:00:00-06:00`), lte: new Date(`${today}T23:59:59-06:00`) },
+        title: { contains: "appt", mode: "insensitive" },
+      },
+      include: { lead: { select: { id: true, name: true, address: true } } },
+      take: 5,
+    });
+
+    // Also check by common appointment keywords
+    const apptTasksAlt = await prisma.task.findMany({
+      where: {
+        done: false,
+        dueDate: { gte: new Date(`${today}T00:00:00-06:00`), lte: new Date(`${today}T23:59:59-06:00`) },
+        OR: apptKeywords.map(kw => ({ title: { contains: kw, mode: "insensitive" as const } })),
+      },
+      include: { lead: { select: { id: true, name: true, address: true } } },
+      take: 5,
+    });
+
+    const allAppts = [...apptTasks, ...apptTasksAlt].filter(
+      (t, i, arr) => arr.findIndex(x => x.id === t.id) === i
+    );
+
+    for (const task of allAppts) {
+      if (!task.lead?.address) continue;
+      const alreadyQueued = await prisma.actionQueue.findFirst({
+        where: { leadId: task.leadId, briefDate: today, payload: { path: ["trigger"], equals: "pre_appt_cma" } },
+      });
+      if (alreadyQueued) continue;
+
+      try {
+        const cma = await buildCMASummary(task.lead.address, "Baton Rouge", "LA");
+        nonNegotiables.unshift({
+          type: "pre_appt_cma",
+          title: `CMA Ready: ${task.lead.name}`,
+          subtitle: `${task.lead.address} · AVM ${cma.avm?.price ? `$${Math.round(cma.avm.price / 1000)}k` : "pending"}`,
+          leadId: task.lead.id,
+          leadName: task.lead.name,
+          dueDate: task.dueDate?.toISOString(),
+          priority: 1,
+          metadata: { cma, address: task.lead.address },
+        });
+      } catch {
+        // CMA failed — still surface the appointment
+        nonNegotiables.unshift({
+          type: "pre_appt_cma",
+          title: `Appt Today: ${task.lead.name}`,
+          subtitle: task.lead.address,
+          leadId: task.lead.id,
+          leadName: task.lead.name,
+          dueDate: task.dueDate?.toISOString(),
+          priority: 1,
         });
       }
     }

@@ -524,6 +524,8 @@ model RenderJob {
   contentProject   ContentProject @relation(fields: [contentProjectId], references: [id], onDelete: Cascade)
   assetType        String   // carousel | story | reel
   status           String   @default("queued") // queued | rendering | done | failed
+  renderId         String?  // AIRE: loop:render-job-completion — external job ID for polling/webhook
+  outputUrl        String?  // AIRE: loop:render-job-completion — URL of completed render output
   error            String?
   resultAssetId    String?
   createdAt        DateTime @default(now())

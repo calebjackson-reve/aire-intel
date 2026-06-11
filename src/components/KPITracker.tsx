@@ -7,9 +7,6 @@ import {
 } from "recharts";
 import DarwinSyncButton from "./DarwinSyncButton";
 
-const CORAL = "#EE8172";
-const CREAM = "#EFDD84";
-
 type Period = "ytd" | "qtd" | "mtd" | "wtd";
 type Metric = "gci" | "volume" | "units" | "pipeline" | "leads";
 
@@ -23,12 +20,12 @@ interface Stats {
   goals: { gci: number | null; volume: number | null; units: number | null };
 }
 
-const METRICS: { key: Metric; label: string; sub: string; color: string; format: (n: number) => string }[] = [
-  { key: "gci", label: "GCI", sub: "Gross Commission", color: CORAL, format: n => `$${(n / 1000).toFixed(0)}k` },
-  { key: "volume", label: "Volume", sub: "Closed Volume", color: CORAL, format: n => n >= 1_000_000 ? `$${(n / 1_000_000).toFixed(2)}M` : `$${(n / 1000).toFixed(0)}k` },
-  { key: "units", label: "Units", sub: "Deals Closed", color: CORAL, format: n => String(n) },
-  { key: "pipeline", label: "Pipeline", sub: "Active Value", color: CORAL, format: n => n >= 1_000_000 ? `$${(n / 1_000_000).toFixed(2)}M` : `$${(n / 1000).toFixed(0)}k` },
-  { key: "leads", label: "Leads", sub: "Sphere Growth", color: CORAL, format: n => String(n) },
+const METRICS: { key: Metric; label: string; sub: string; color: string; tileClass: string; format: (n: number) => string }[] = [
+  { key: "gci",      label: "GCI",      sub: "Gross Commission", color: "#EE8172", tileClass: "coral",  format: n => `$${(n / 1000).toFixed(0)}k` },
+  { key: "volume",   label: "Volume",   sub: "Closed Volume",    color: "#728AC5", tileClass: "blue",   format: n => n >= 1_000_000 ? `$${(n / 1_000_000).toFixed(2)}M` : `$${(n / 1000).toFixed(0)}k` },
+  { key: "units",    label: "Units",    sub: "Deals Closed",     color: "#F59E0B", tileClass: "amber",  format: n => String(n) },
+  { key: "pipeline", label: "Pipeline", sub: "Active Value",     color: "#065F46", tileClass: "green",  format: n => n >= 1_000_000 ? `$${(n / 1_000_000).toFixed(2)}M` : `$${(n / 1000).toFixed(0)}k` },
+  { key: "leads",    label: "Leads",    sub: "Sphere Growth",    color: "#7E5EA1", tileClass: "plum",   format: n => String(n) },
 ];
 
 const PERIODS: { key: Period; label: string }[] = [
@@ -132,14 +129,8 @@ export default function KPITracker({ onLogDeal }: { onLogDeal: () => void }) {
         </div>
       </div>
 
-      {/* Horizontal grid of metric cards */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(5, 1fr)",
-          gap: "12px",
-        }}
-      >
+      {/* Horizontal grid of metric stat tiles */}
+      <div className="stat-tile-row stat-tile-5">
         {METRICS.map(metricDef => {
           const isActive = metric === metricDef.key;
           const v = valueFor(metricDef.key);
@@ -147,62 +138,22 @@ export default function KPITracker({ onLogDeal }: { onLogDeal: () => void }) {
             <button
               key={metricDef.key}
               onClick={() => setMetric(metricDef.key)}
+              className={`stat-tile ${metricDef.tileClass}`}
               style={{
-                background: "var(--aire-card)",
-                border: `1px solid ${isActive ? "var(--aire-border-2)" : "var(--aire-border)"}`,
-                borderRadius: "16px",
-                padding: "22px",
-                textAlign: "left",
                 cursor: "pointer",
-                boxShadow: isActive ? "var(--shadow-card-hover)" : "var(--shadow-card)",
-                transition: "box-shadow 320ms var(--ease-apple), border-color 200ms var(--ease-apple), transform 200ms var(--ease-apple)",
-                transform: isActive ? "translateY(-1px)" : "none",
-                position: "relative",
+                border: "none",
+                textAlign: "left",
                 fontFamily: "inherit",
-              }}
-              onMouseEnter={(e) => {
-                if (!isActive) e.currentTarget.style.boxShadow = "var(--shadow-card-hover)";
-              }}
-              onMouseLeave={(e) => {
-                if (!isActive) e.currentTarget.style.boxShadow = "var(--shadow-card)";
+                outline: isActive ? "3px solid rgba(255,255,255,0.6)" : "3px solid transparent",
+                outlineOffset: "-3px",
+                transform: isActive ? "translateY(-2px)" : "none",
+                transition: "transform 200ms var(--ease-apple), outline-color 150ms",
+                boxShadow: isActive ? "0 6px 24px rgba(0,0,0,0.18)" : "0 2px 8px rgba(0,0,0,0.10)",
               }}
             >
-              <div
-                style={{
-                  fontSize: "10px",
-                  letterSpacing: "0.18em",
-                  color: "var(--aire-text-2)",
-                  textTransform: "uppercase",
-                  fontWeight: 600,
-                  marginBottom: "10px",
-                }}
-              >
-                {metricDef.label}
-              </div>
-              <div
-                className="metric-number"
-                style={{
-                  fontSize: "38px",
-                  color: "var(--aire-text)",
-                  lineHeight: 1,
-                }}
-              >
-                {metricDef.format(v)}
-              </div>
-              {isActive && (
-                <div
-                  style={{
-                    position: "absolute",
-                    left: "22px",
-                    right: "22px",
-                    bottom: "16px",
-                    height: "2px",
-                    background: "var(--aire-coral)",
-                    borderRadius: "2px",
-                    opacity: 0.9,
-                  }}
-                />
-              )}
+              <div className="st-label">{metricDef.label}</div>
+              <div className="st-value">{metricDef.format(v)}</div>
+              <div className="st-sub">{metricDef.sub}</div>
             </button>
           );
         })}
@@ -301,8 +252,8 @@ export default function KPITracker({ onLogDeal }: { onLogDeal: () => void }) {
           <AreaChart data={series} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
             <defs>
               <linearGradient id={`grad-${metric}`} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor={CORAL} stopOpacity={0.30} />
-                <stop offset="100%" stopColor={CORAL} stopOpacity={0} />
+                <stop offset="0%" stopColor={m.color} stopOpacity={0.30} />
+                <stop offset="100%" stopColor={m.color} stopOpacity={0} />
               </linearGradient>
             </defs>
             <CartesianGrid strokeDasharray="2 4" stroke="rgba(26,26,28,0.06)" vertical={false} />
@@ -333,7 +284,7 @@ export default function KPITracker({ onLogDeal }: { onLogDeal: () => void }) {
             {goal && (
               <ReferenceLine
                 y={goal}
-                stroke={CREAM}
+                stroke="#EFDD84"
                 strokeDasharray="4 4"
                 label={{
                   value: `Goal: ${m.format(goal)}`,
@@ -346,11 +297,11 @@ export default function KPITracker({ onLogDeal }: { onLogDeal: () => void }) {
             <Area
               type="monotone"
               dataKey="y"
-              stroke={CORAL}
+              stroke={m.color}
               strokeWidth={2}
               fill={`url(#grad-${metric})`}
               dot={false}
-              activeDot={{ r: 4, fill: CORAL, stroke: "var(--aire-card)", strokeWidth: 2 }}
+              activeDot={{ r: 4, fill: m.color, stroke: "var(--aire-card)", strokeWidth: 2 }}
             />
           </AreaChart>
         </ResponsiveContainer>
