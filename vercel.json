@@ -30,6 +30,7 @@
     { "path": "/api/agents/gmail-lead-detect",        "schedule": "*/30 * * * *" },
     { "path": "/api/agents/market-weekly",            "schedule": "0 10 * * 1"   },
     { "path": "/api/agents/zillow-content",           "schedule": "0 9 * * 2,5"  },
-    { "path": "/api/agents/messenger-monitor",        "schedule": "0 */2 * * *"  }
+    { "path": "/api/agents/messenger-monitor",        "schedule": "0 */2 * * *"  },
+    { "path": "/api/agents/skill-optimizer",           "schedule": "0 7 * * 0"    }
   ]
 }
