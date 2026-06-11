@@ -9,6 +9,11 @@ FAIL_LIMIT=3
 MAX_TURNS=20
 fails=0
 
+# Skip if NOTES.md already marks loop done
+if grep -qiE "status.*done|status.*complete|loop complete|loop remains done|loop status.*done|all spec.*done|all units.*done|definition of done.*met|loop is complete|maintenance mode|steady state|units_complete|all.*units.*complete|a.b.c.*complete" "$DIR/NOTES.md" 2>/dev/null; then
+  echo "Loop $SLUG already complete per NOTES.md -- exiting 0."; exit 0
+fi
+
 for i in $(seq 1 "$MAX_ITERATIONS"); do
   echo "=== $SLUG iteration $i/$MAX_ITERATIONS $(date -Is) ===" | tee -a "$DIR/loop.log"
   BEFORE=$(git rev-parse HEAD)

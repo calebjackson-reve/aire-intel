@@ -1,52 +1,44 @@
 #!/usr/bin/env bash
-# loops/discovery-loop.sh — re-run the /find-loops discovery pass
-# Usage: ./loops/discovery-loop.sh
-# Outputs: loops/SIGNAL_INVENTORY.md, loops/proposed/NN-*.md, loops/REGISTRY.md
+# discovery-loop.sh — runs /find-loops as a calculated loop until discovery
+# is complete. Eating our own cooking: the loop-finder runs in a loop.
+set -uo pipefail
+cd "$(git rev-parse --show-toplevel)"
 
-set -euo pipefail
-cd "$(dirname "$0")/.."
+MAX_ITERATIONS=5
+FAIL_LIMIT=2
+MAX_TURNS=50
+FOCUS="${1:-}"   # optional: ./loops/discovery-loop.sh marketing
+fails=0
+mkdir -p loops/proposed
 
-PROMPT=$(cat <<'EOF'
-You are running the /find-loops discovery pass on the AIRE platform at /Users/caleb/aire-platform.
+for i in $(seq 1 "$MAX_ITERATIONS"); do
+  echo "=== discovery iteration $i/$MAX_ITERATIONS $(date -Is) ===" | tee -a loops/discovery.log
+  BEFORE_COUNT=$(ls loops/proposed 2>/dev/null | wc -l)
 
-## What to do
+  OUTPUT=$(claude -p "/find-loops $FOCUS" \
+    --output-format json \
+    --max-turns "$MAX_TURNS" \
+    --allowedTools "Read,Write,Edit,Glob,Grep,Bash(git *),Bash(ls *)" \
+    2>>loops/discovery.log)
 
-1. **Signal Inventory** — scan the codebase for all signal sources:
-   - Prisma models (all fields, relations)
-   - API routes (paths, methods, trigger conditions)
-   - Cron jobs (vercel.json schedules)
-   - Webhooks (inbound routes)
-   - Integration clients (src/lib/*.ts)
-   - Error surfaces (ErrorLog, AgentRun patterns)
-   - Quality gates (build, typecheck, tests)
+  echo "$OUTPUT" >> loops/discovery.log
 
-2. **Loop Discovery** — for every pair of (trigger signal, graded output), generate a loop candidate.
-   Score each candidate using: Oracle×2 + Value×2 + Safety + Effort (max 30).
-   Park anything < 16. Do NOT re-propose loops already in loops/REGISTRY.md with status != "archived".
+  if echo "$OUTPUT" | grep -q 'EXIT_SIGNAL: true' && \
+     echo "$OUTPUT" | grep -q 'STATUS: COMPLETE'; then
+    echo "Discovery complete after $i iteration(s)."
+    echo "Review loops/REGISTRY.md, check the Approved box on the specs you"
+    echo "want, then run: claude -p '/build-loop <slug>' (or /build-loop interactively)."
+    exit 0
+  fi
 
-3. **Write Outputs**:
-   - Overwrite `loops/SIGNAL_INVENTORY.md` with the fresh inventory
-   - Write NEW candidates only to `loops/proposed/NN-<slug>.md` (incrementing NN from the highest existing rank + 1)
-   - Update `loops/REGISTRY.md`: add new rows, preserve existing rows
-
-4. **Loop ROI Report** — for every loop in REGISTRY.md with status = "deployed" or "building":
-   - Query the oracle metric for that loop (reply rate, error count, coverage %, etc.)
-   - Report actual vs. target
-   - Flag any loop where oracle is below threshold (consider pausing)
-
-## Output Format
-```
-SIGNAL_INVENTORY: written | unchanged
-NEW_LOOPS: <n>
-PARKED: <n>
-ROI_REPORT: <deployed loops and their current oracle metrics>
-```
-
-Follow loops/LOOP_TEMPLATE.md format exactly. All new specs have [ ] Approved (unchecked).
-EOF
-)
-
-LOG="loops/discovery-run-$(date +%Y%m%d-%H%M).log"
-echo "=== /find-loops discovery pass: $(date) ===" | tee "$LOG"
-claude -p "$PROMPT" --max-turns 20 2>&1 | tee -a "$LOG"
-echo "=== Done: $(date) ===" | tee -a "$LOG"
+  # Progress heartbeat: new or updated spec files
+  AFTER_COUNT=$(ls loops/proposed 2>/dev/null | wc -l)
+  if [ "$AFTER_COUNT" -le "$BEFORE_COUNT" ] && ! git status --porcelain loops/ | grep -q .; then
+    fails=$((fails+1))
+    [ "$fails" -ge "$FAIL_LIMIT" ] && { echo "No discovery progress — halting."; exit 1; }
+  else
+    fails=0
+  fi
+done
+echo "Iteration cap reached — check loops/DISCOVERY_NOTES.md for handoff state."
+exit 2

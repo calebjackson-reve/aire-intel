@@ -10,7 +10,29 @@ Add enrollment stall detection inside transaction-watchdog. Flag enrollments whe
 - Setting["smartplan.stalledCount"] updated
 - `npx tsc --noEmit` and `npm run build` both pass
 
+## Schema Facts (Unit A)
+
+`SmartPlanEnrollment` confirmed in `prisma/schema.prisma:178`:
+- `id`, `leadId`, `lead`, `planId`, `plan`
+- `currentStep Int @default(0)`
+- `active Boolean @default(true)` — no `status` string field; use `active: true` to filter
+- `startedAt DateTime`
+- `nextStepAt DateTime?` — nullable; null means no step scheduled yet (skip these)
+
+No `lastStepExecutedAt` or `enrolledAt` fields — SPEC assumed more fields than exist.
+
 ## Iteration Log
 
 ### Iteration 0 — scaffolded, nothing started
-**Next:** Read prisma/schema.prisma — find SmartPlan enrollment model name and fields.
+
+### Iteration 1 — Units A + B complete
+- Confirmed `SmartPlanEnrollment` model (active Boolean, nextStepAt nullable)
+- Added enrollment decay pass as step 4 in `src/app/api/agents/transaction-watchdog/route.ts`
+  - Queries `active=true AND nextStepAt < now-48h`, takes 20
+  - ActionQueue dedup by `leadId + type + agentType + status=pending`
+  - Creates `create_lofty_task` items, priority 4, requiresApproval
+  - Notifications if >30% stalled; upserts `smartplan.stalledCount` Setting
+- Oracle: `npx tsc --noEmit` ✓, `npm run build` ✓
+- Commit: `93776da`
+
+**STATUS: DONE — oracle passing, committed**

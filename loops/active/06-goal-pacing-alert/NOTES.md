@@ -15,3 +15,11 @@ Weekly Monday 7AM cron. Compares lead count, closings, and outbound contacts aga
 
 ### Iteration 0 — scaffolded, nothing started
 **Next:** Create src/app/api/agents/goal-pacing/route.ts. First verify ContactLog has direction field via schema read.
+
+### Iteration 1 — Units A+B+C complete
+- Schema confirmed: `Lead.stage`, `Lead.createdAt`, `Lead.closingDate`; `ContactLog.direction` ("outbound"|"inbound"), `ContactLog.createdAt`
+- Created `src/app/api/agents/goal-pacing/route.ts` — POST+GET handlers, reads goal Settings, counts leads/outbound/closings, computes pacing %, writes Notification with green/yellow/red status
+- Added `{ "path": "/api/agents/goal-pacing", "schedule": "0 13 * * 1" }` to vercel.json
+- `npx tsc --noEmit` clean, `npm run build` passed
+- Committed: `0a4381d feat(goal-pacing): add weekly pacing alert route + vercel cron`
+**Status: DONE — all three units complete, loop ready to ship**

@@ -1,124 +1,102 @@
-=== AIRE Loop Build-All: Wed Jun 10 21:44:23 CDT 2026 ===
+=== AIRE Loop Build-All: Tue Jun  9 22:20:19 CDT 2026 ===
 ──────────────────────────────────────────────────
 ──────────────────────────────────────────────────
 START 01-inbound-reply-handler
-Loop 01-inbound-reply-handler already complete per NOTES.md -- exiting 0.
-DONE  01-inbound-reply-handler (0s) OK
+DONE  01-inbound-reply-handler (411s) OK
 ──────────────────────────────────────────────────
 START 03-calendly-post-meeting-followup
-Loop 03-calendly-post-meeting-followup already complete per NOTES.md -- exiting 0.
-DONE  03-calendly-post-meeting-followup (0s) OK
+DONE  03-calendly-post-meeting-followup (484s) OK
 ──────────────────────────────────────────────────
 START 02-listing-alert-buyer-match
-Loop 02-listing-alert-buyer-match already complete per NOTES.md -- exiting 0.
-DONE  02-listing-alert-buyer-match (0s) OK
+DONE  02-listing-alert-buyer-match (316s) OK
 ──────────────────────────────────────────────────
 START 16-error-memory-autofix
-Loop 16-error-memory-autofix already complete per NOTES.md -- exiting 0.
-DONE  16-error-memory-autofix (0s) OK
+FAIL  16-error-memory-autofix (328s) exit=1
 ──────────────────────────────────────────────────
 START 18-test-coverage-ratchet
-Loop 18-test-coverage-ratchet already complete per NOTES.md -- exiting 0.
-DONE  18-test-coverage-ratchet (0s) OK
+FAIL  18-test-coverage-ratchet (649s) exit=1
 ──────────────────────────────────────────────────
 START 10-sphere-reactivation
-Loop 10-sphere-reactivation already complete per NOTES.md -- exiting 0.
-DONE  10-sphere-reactivation (0s) OK
+FAIL  10-sphere-reactivation (355s) exit=1
 ──────────────────────────────────────────────────
 START 14-propstream-intent-revival
-Loop 14-propstream-intent-revival already complete per NOTES.md -- exiting 0.
-DONE  14-propstream-intent-revival (0s) OK
+FAIL  14-propstream-intent-revival (237s) exit=1
 ──────────────────────────────────────────────────
 START 04-meta-token-refresh-alert
-Loop 04-meta-token-refresh-alert already complete per NOTES.md -- exiting 0.
-DONE  04-meta-token-refresh-alert (0s) OK
+DONE  04-meta-token-refresh-alert (283s) OK
 ──────────────────────────────────────────────────
 START 05-agent-health-monitor
-Loop 05-agent-health-monitor already complete per NOTES.md -- exiting 0.
-DONE  05-agent-health-monitor (0s) OK
+FAIL  05-agent-health-monitor (219s) exit=1
 ──────────────────────────────────────────────────
 START 08-dotloop-sync-freshness
-Loop 08-dotloop-sync-freshness already complete per NOTES.md -- exiting 0.
-DONE  08-dotloop-sync-freshness (0s) OK
+FAIL  08-dotloop-sync-freshness (365s) exit=1
 ──────────────────────────────────────────────────
 START 13-lofty-sync-health
-Loop 13-lofty-sync-health already complete per NOTES.md -- exiting 0.
-DONE  13-lofty-sync-health (0s) OK
+FAIL  13-lofty-sync-health (369s) exit=1
 ──────────────────────────────────────────────────
 START 17-audit-debt-burndown
-Loop 17-audit-debt-burndown already complete per NOTES.md -- exiting 0.
-DONE  17-audit-debt-burndown (0s) OK
+FAIL  17-audit-debt-burndown (601s) exit=1
 ──────────────────────────────────────────────────
 START 19-paid-ads-oracle
-Loop 19-paid-ads-oracle already complete per NOTES.md -- exiting 0.
-DONE  19-paid-ads-oracle (0s) OK
+FAIL  19-paid-ads-oracle (287s) exit=1
 ──────────────────────────────────────────────────
 START 20-listing-content-production
-Loop 20-listing-content-production already complete per NOTES.md -- exiting 0.
-DONE  20-listing-content-production (0s) OK
+FAIL  20-listing-content-production (437s) exit=1
 ──────────────────────────────────────────────────
 START 21-competitor-monitor
-Loop 21-competitor-monitor already complete per NOTES.md -- exiting 0.
-DONE  21-competitor-monitor (0s) OK
+FAIL  21-competitor-monitor (286s) exit=1
 ──────────────────────────────────────────────────
 START 06-goal-pacing-alert
-Loop 06-goal-pacing-alert already complete per NOTES.md -- exiting 0.
-DONE  06-goal-pacing-alert (0s) OK
+FAIL  06-goal-pacing-alert (164s) exit=1
 ──────────────────────────────────────────────────
 START 09-content-performance-learning
-Loop 09-content-performance-learning already complete per NOTES.md -- exiting 0.
-DONE  09-content-performance-learning (0s) OK
+FAIL  09-content-performance-learning (222s) exit=1
 ──────────────────────────────────────────────────
 START 15-revival-performance
-Loop 15-revival-performance already complete per NOTES.md -- exiting 0.
-DONE  15-revival-performance (0s) OK
+FAIL  15-revival-performance (368s) exit=1
 ──────────────────────────────────────────────────
 START 22-monthly-meta-discovery
-Loop 22-monthly-meta-discovery already complete per NOTES.md -- exiting 0.
-DONE  22-monthly-meta-discovery (0s) OK
+FAIL  22-monthly-meta-discovery (244s) exit=1
 ──────────────────────────────────────────────────
 START 07-render-job-completion
-Loop 07-render-job-completion already complete per NOTES.md -- exiting 0.
-DONE  07-render-job-completion (0s) OK
+FAIL  07-render-job-completion (377s) exit=1
 ──────────────────────────────────────────────────
 START 12-phase-b-graduation
-Loop 12-phase-b-graduation already complete per NOTES.md -- exiting 0.
-DONE  12-phase-b-graduation (0s) OK
+FAIL  12-phase-b-graduation (153s) exit=1
 ──────────────────────────────────────────────────
 START 11-smart-plan-enrollment-decay
-Loop 11-smart-plan-enrollment-decay already complete per NOTES.md -- exiting 0.
-DONE  11-smart-plan-enrollment-decay (0s) OK
+FAIL  11-smart-plan-enrollment-decay (159s) exit=1
 ──────────────────────────────────────────────────
-=== Build-All Complete: 0s ===
+=== Build-All Complete: 7316s ===
 ──────────────────────────────────────────────────
 # Loop Build-All Summary
 
-_Run: Wed Jun 10 21:44:23 CDT 2026  |  Total: 0s_
+_Run: Wed Jun 10 00:22:15 CDT 2026  |  Total: 7316s_
 
 | # | Loop | Status | Duration |
 |---|------|--------|----------|
-| 1 | 01-inbound-reply-handler | OK ✓ | 0s |
-| 2 | 03-calendly-post-meeting-followup | OK ✓ | 0s |
-| 3 | 02-listing-alert-buyer-match | OK ✓ | 0s |
-| 4 | 16-error-memory-autofix | OK ✓ | 0s |
-| 5 | 18-test-coverage-ratchet | OK ✓ | 0s |
-| 6 | 10-sphere-reactivation | OK ✓ | 0s |
-| 7 | 14-propstream-intent-revival | OK ✓ | 0s |
-| 8 | 04-meta-token-refresh-alert | OK ✓ | 0s |
-| 9 | 05-agent-health-monitor | OK ✓ | 0s |
-| 10 | 08-dotloop-sync-freshness | OK ✓ | 0s |
-| 11 | 13-lofty-sync-health | OK ✓ | 0s |
-| 12 | 17-audit-debt-burndown | OK ✓ | 0s |
-| 13 | 19-paid-ads-oracle | OK ✓ | 0s |
-| 14 | 20-listing-content-production | OK ✓ | 0s |
-| 15 | 21-competitor-monitor | OK ✓ | 0s |
-| 16 | 06-goal-pacing-alert | OK ✓ | 0s |
-| 17 | 09-content-performance-learning | OK ✓ | 0s |
-| 18 | 15-revival-performance | OK ✓ | 0s |
-| 19 | 22-monthly-meta-discovery | OK ✓ | 0s |
-| 20 | 07-render-job-completion | OK ✓ | 0s |
-| 21 | 12-phase-b-graduation | OK ✓ | 0s |
-| 22 | 11-smart-plan-enrollment-decay | OK ✓ | 0s |
+| 1 | 01-inbound-reply-handler | OK ✓ | 411s |
+| 2 | 03-calendly-post-meeting-followup | OK ✓ | 484s |
+| 3 | 02-listing-alert-buyer-match | OK ✓ | 316s |
+| 4 | 16-error-memory-autofix | FAIL ✗ | 328s |
+| 5 | 18-test-coverage-ratchet | FAIL ✗ | 649s |
+| 6 | 10-sphere-reactivation | FAIL ✗ | 355s |
+| 7 | 14-propstream-intent-revival | FAIL ✗ | 237s |
+| 8 | 04-meta-token-refresh-alert | OK ✓ | 283s |
+| 9 | 05-agent-health-monitor | FAIL ✗ | 219s |
+| 10 | 08-dotloop-sync-freshness | FAIL ✗ | 365s |
+| 11 | 13-lofty-sync-health | FAIL ✗ | 369s |
+| 12 | 17-audit-debt-burndown | FAIL ✗ | 601s |
+| 13 | 19-paid-ads-oracle | FAIL ✗ | 287s |
+| 14 | 20-listing-content-production | FAIL ✗ | 437s |
+| 15 | 21-competitor-monitor | FAIL ✗ | 286s |
+| 16 | 06-goal-pacing-alert | FAIL ✗ | 164s |
+| 17 | 09-content-performance-learning | FAIL ✗ | 222s |
+| 18 | 15-revival-performance | FAIL ✗ | 368s |
+| 19 | 22-monthly-meta-discovery | FAIL ✗ | 244s |
+| 20 | 07-render-job-completion | FAIL ✗ | 377s |
+| 21 | 12-phase-b-graduation | FAIL ✗ | 153s |
+| 22 | 11-smart-plan-enrollment-decay | FAIL ✗ | 159s |
 
 ## Cron Entries Added
 Check `vercel.json` for all cron paths added by loops.
