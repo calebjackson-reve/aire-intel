@@ -27,6 +27,8 @@ interface Listing {
   mlsNumber: string;
   propertyType: string | null;
   listingAgent: string | null;
+  source?: "paragon" | "zillow";
+  listingUrl?: string;
 }
 
 interface MarketStats {
@@ -253,6 +255,14 @@ function ListingCard({ listing, selected, onSelect, onUseForContent }: {
             <Home size={18} color="var(--aire-muted)" />
           </div>
         )}
+        {listing.source === "zillow" && (
+          <span style={{
+            position: "absolute", bottom: 2, right: 2,
+            fontSize: 8, letterSpacing: "0.06em", fontWeight: 700,
+            background: "rgba(0,106,255,0.85)", color: "#fff",
+            padding: "1px 4px", borderRadius: 3,
+          }}>Z</span>
+        )}
       </div>
 
       {/* Info */}
@@ -297,7 +307,21 @@ function ListingCard({ listing, selected, onSelect, onUseForContent }: {
         >
           <PenTool size={13} color="var(--aire-text-2)" />
         </button>
-        {listing.mlsNumber && (
+        {listing.source === "zillow" && listing.listingUrl ? (
+          <a
+            href={listing.listingUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            title="View on Zillow"
+            style={{
+              width: 28, height: 28, borderRadius: 8, border: "1px solid var(--aire-border)",
+              background: "transparent", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+              textDecoration: "none",
+            }}
+          >
+            <ExternalLink size={13} color="#006AFF" />
+          </a>
+        ) : listing.mlsNumber ? (
           <a
             href={`/mls`}
             title="View in MLS"
@@ -309,7 +333,7 @@ function ListingCard({ listing, selected, onSelect, onUseForContent }: {
           >
             <ExternalLink size={13} color="var(--aire-text-2)" />
           </a>
-        )}
+        ) : null}
       </div>
     </div>
   );

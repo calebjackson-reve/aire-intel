@@ -30,12 +30,37 @@ export default function JarvisBar() {
   const [toolLabel, setToolLabel] = useState("");
   const [response, setResponse] = useState("");
   const [visible, setVisible] = useState(false);
+  const [fabPulse, setFabPulse] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const responseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pathname = usePathname();
 
   // Show after mount to avoid SSR flash
   useEffect(() => { setVisible(true); }, []);
+
+  // Cmd+J focuses the input from anywhere
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key === "j") {
+        e.preventDefault();
+        inputRef.current?.focus();
+        setFabPulse(false);
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  // Pulse the FAB every 90s when idle to remind user AIRE is alive
+  useEffect(() => {
+    const timer = setInterval(() => {
+      if (status === "idle") {
+        setFabPulse(true);
+        setTimeout(() => setFabPulse(false), 2000);
+      }
+    }, 90_000);
+    return () => clearInterval(timer);
+  }, [status]);
 
   // Clear response after 8s of inactivity
   const scheduleCollapse = useCallback(() => {
@@ -127,7 +152,53 @@ export default function JarvisBar() {
 
   const hasResponse = response || (status === "thinking" && toolLabel);
 
+  // Page label shown in the context chip
+  const pageLabel = pathname === "/" ? "Dashboard"
+    : pathname.startsWith("/contacts/") ? "Contact"
+    : pathname.startsWith("/contacts") ? "Contacts"
+    : pathname.startsWith("/pipeline") ? "Pipeline"
+    : pathname.startsWith("/market") ? "Market"
+    : pathname.startsWith("/brief") ? "Morning Brief"
+    : pathname.startsWith("/agents") ? "Agents"
+    : pathname.startsWith("/social") ? "Social"
+    : pathname.startsWith("/smart-plans") ? "Smart Plans"
+    : pathname.startsWith("/create-post") ? "Post Studio"
+    : null;
+
   return (
+    <>
+      {/* Floating AIRE trigger — bottom right, always visible */}
+      <button
+        onClick={() => inputRef.current?.focus()}
+        title="Ask AIRE (⌘J)"
+        style={{
+          position: "fixed",
+          bottom: 64,
+          right: 20,
+          zIndex: 101,
+          width: 44,
+          height: 44,
+          borderRadius: "50%",
+          background: status === "thinking" ? "#EE8172" : "var(--aire-ink, #09090B)",
+          border: "none",
+          cursor: "pointer",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: 16,
+          color: "#fff",
+          boxShadow: status === "thinking"
+            ? "0 0 0 4px rgba(238,129,114,0.3), 0 4px 16px rgba(0,0,0,0.2)"
+            : fabPulse
+            ? "0 0 0 6px rgba(9,9,11,0.12), 0 4px 16px rgba(0,0,0,0.18)"
+            : "0 4px 16px rgba(0,0,0,0.18)",
+          transition: "all 0.25s ease",
+          animation: fabPulse ? "fab-ping 0.6s ease-out" : "none",
+        }}
+      >
+        ✦
+      </button>
+
     <div
       style={{
         position: "fixed",
@@ -193,27 +264,41 @@ export default function JarvisBar() {
           width: "100%",
         }}
       >
-        {/* AIRE label */}
-        <span
-          style={{
-            fontSize: 11,
-            fontWeight: 700,
-            letterSpacing: "0.08em",
-            color: status === "thinking" ? "#EE8172" : "#9CA3AF",
-            fontFamily: "var(--font-sans-app, system-ui)",
-            flexShrink: 0,
-            transition: "color 0.2s",
-            userSelect: "none",
-          }}
-        >
-          AIRE
-        </span>
+        {/* AIRE label + page context chip */}
+        <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+          <span
+            style={{
+              fontSize: 11,
+              fontWeight: 700,
+              letterSpacing: "0.08em",
+              color: status === "thinking" ? "#EE8172" : "#9CA3AF",
+              fontFamily: "var(--font-sans-app, system-ui)",
+              transition: "color 0.2s",
+              userSelect: "none",
+            }}
+          >
+            AIRE
+          </span>
+          {pageLabel && (
+            <span style={{
+              fontSize: 10,
+              letterSpacing: "0.1em",
+              color: "#D1D5DB",
+              background: "rgba(0,0,0,0.05)",
+              padding: "2px 7px",
+              borderRadius: 999,
+              userSelect: "none",
+            }}>
+              {pageLabel}
+            </span>
+          )}
+        </div>
 
         <input
           ref={inputRef}
           value={input}
           onChange={e => setInput(e.target.value)}
-          placeholder={status === "thinking" ? "" : "ask me anything or tell me what to do"}
+          placeholder={status === "thinking" ? "" : "⌘J — ask me anything or tell me what to do"}
           disabled={status === "thinking"}
           style={{
             flex: 1,
@@ -252,5 +337,6 @@ export default function JarvisBar() {
         </button>
       </form>
     </div>
+    </>
   );
 }

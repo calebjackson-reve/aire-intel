@@ -11,6 +11,7 @@ import LoopPanel from "@/components/LoopPanel";
 import LinkedInOutreachCard, { type OutreachRecord } from "@/components/LinkedInOutreachCard";
 import LeadTemperature from "@/components/LeadTemperature";
 import SellIntent from "@/components/SellIntent";
+import TouchComposer from "@/components/TouchComposer";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -137,10 +138,8 @@ export default function ContactProfile() {
   const [lead, setLead] = useState<Lead | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Timeline
-  const [logMethod, setLogMethod] = useState("note");
+  // Quick note log (inbound / manual entry below timeline)
   const [logNote, setLogNote] = useState("");
-  const [logDirection, setLogDirection] = useState("outbound");
   const [addingLog, setAddingLog] = useState(false);
 
   // Edit mode
@@ -151,14 +150,9 @@ export default function ContactProfile() {
   const [newTask, setNewTask] = useState("");
   const [addingTask, setAddingTask] = useState(false);
 
-  // AI follow-up
-  const [showAI, setShowAI] = useState(false);
-  const [aiStream, setAiStream] = useState("");
-  const [aiLoading, setAiLoading] = useState(false);
-  const aiRef = useRef<HTMLDivElement>(null);
 
-  // Ref for the LOG ACTIVITY card so the sticky sidebar can scroll to it
-  const logSectionRef = useRef<HTMLDivElement>(null);
+  // Ref for the TouchComposer so the sticky sidebar can scroll to it
+  const composerRef = useRef<HTMLDivElement>(null);
 
   // Delete confirm
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -174,9 +168,6 @@ export default function ContactProfile() {
   const [refreshingLofty, setRefreshingLofty] = useState(false);
   const [loftyToast, setLoftyToast] = useState<string | null>(null);
 
-  // Direct-send state for AI drafts (Twilio + SendGrid)
-  const [sendingChannel, setSendingChannel] = useState<"sms" | "email" | null>(null);
-  const [sendToast, setSendToast] = useState<string | null>(null);
 
   // LinkedIn outreach panel
   const [showLinkedIn, setShowLinkedIn] = useState(false);
@@ -192,9 +183,6 @@ export default function ContactProfile() {
       .catch(() => setLoading(false));
   }, [id]);
 
-  useEffect(() => {
-    if (aiRef.current) aiRef.current.scrollTop = aiRef.current.scrollHeight;
-  }, [aiStream]);
 
   async function saveEdit() {
     const res = await fetch(`/api/contacts/${id}`, {
@@ -266,74 +254,6 @@ export default function ContactProfile() {
     }
   }
 
-  /**
-   * Send the current AI draft as an SMS or email via Twilio/SendGrid. Falls
-   * back to mailto:/sms: if the integration isn't connected.
-   */
-  async function sendAIDraft(channel: "sms" | "email") {
-    if (!lead || !aiStream) return;
-    setSendingChannel(channel);
-    setSendToast(null);
-    try {
-      if (channel === "sms") {
-        if (!lead.phone) {
-          setSendToast("No phone on file");
-          return;
-        }
-        const res = await fetch("/api/sms", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ leadId: lead.id, to: lead.phone, message: aiStream }),
-        });
-        const data = await res.json();
-        if (data.ok) {
-          setSendToast(`SMS sent · ${data.status ?? "queued"}`);
-          // Refetch to pick up the new ContactLog entry
-          const fresh = await fetch(`/api/contacts/${id}`).then((r) => r.json());
-          setLead(fresh);
-        } else {
-          // Twilio not configured → fall back to native sms: link
-          if (res.status === 503) {
-            window.location.href = `sms:${lead.phone}&body=${encodeURIComponent(aiStream)}`;
-            return;
-          }
-          setSendToast(`SMS failed: ${data.error?.slice(0, 60) ?? "unknown"}`);
-        }
-      } else {
-        if (!lead.email) {
-          setSendToast("No email on file");
-          return;
-        }
-        const res = await fetch("/api/email", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            leadId: lead.id,
-            to: lead.email,
-            subject: `Following up — ${lead.firstName ?? lead.name.split(" ")[0]}`,
-            message: aiStream,
-          }),
-        });
-        const data = await res.json();
-        if (data.ok) {
-          setSendToast("Email sent ✓");
-          const fresh = await fetch(`/api/contacts/${id}`).then((r) => r.json());
-          setLead(fresh);
-        } else {
-          if (res.status === 503) {
-            const subject = encodeURIComponent(`Following up — ${lead.firstName ?? lead.name.split(" ")[0]}`);
-            const body = encodeURIComponent(aiStream);
-            window.location.href = `mailto:${lead.email}?subject=${subject}&body=${body}`;
-            return;
-          }
-          setSendToast(`Email failed: ${data.error?.slice(0, 60) ?? "unknown"}`);
-        }
-      }
-    } finally {
-      setSendingChannel(null);
-      setTimeout(() => setSendToast(null), 3500);
-    }
-  }
 
   /** Trigger TC packet send for the current lead (same flow as TCHandoffPanel). */
   async function sendTCPacket() {
@@ -414,19 +334,18 @@ export default function ContactProfile() {
     }
   }
 
-  async function addLog() {
-    if (!logNote.trim() && logMethod === "note") return;
+  async function addNote() {
+    if (!logNote.trim()) return;
     setAddingLog(true);
     const res = await fetch(`/api/contacts/${id}/timeline`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ method: logMethod, note: logNote, direction: logDirection }),
+      body: JSON.stringify({ method: "note", note: logNote, direction: "outbound" }),
     });
     const log = await res.json();
     setLead(prev => prev ? {
       ...prev,
       timeline_logs: [log, ...prev.timeline_logs],
-      lastContactDate: new Date().toISOString(),
     } : prev);
     setLogNote("");
     setAddingLog(false);
@@ -459,24 +378,6 @@ export default function ContactProfile() {
     setAddingTask(false);
   }
 
-  async function generateFollowUp() {
-    setAiLoading(true);
-    setAiStream("");
-    const res = await fetch("/api/followup", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ lead }),
-    });
-    const reader = res.body?.getReader();
-    const dec = new TextDecoder();
-    if (!reader) return;
-    setAiLoading(false);
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      setAiStream(prev => prev + dec.decode(value));
-    }
-  }
 
   async function deleteLead() {
     await fetch(`/api/contacts/${id}`, { method: "DELETE" });
@@ -512,8 +413,8 @@ export default function ContactProfile() {
           /AI/log/TC buttons so Caleb never has to scroll to find an action. */}
       <ContactQuickActions
         lead={lead}
-        onAIFollowUp={() => { setShowAI(true); if (!aiStream) generateFollowUp(); }}
-        onScrollToLog={() => logSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
+        onAIFollowUp={() => composerRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
+        onScrollToLog={() => composerRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
         onSendTCPacket={sendTCPacket}
       />
 
@@ -587,11 +488,11 @@ export default function ContactProfile() {
 
         <div style={{ display: "flex", gap: "8px", alignItems: "center", position: "relative", zIndex: 1 }}>
           <button
-            onClick={() => { setShowAI(!showAI); if (!showAI && !aiStream) generateFollowUp(); }}
+            onClick={() => composerRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
             className="btn-coral"
             style={{ fontSize: "11px", letterSpacing: "0.14em", padding: "10px 18px" }}
           >
-            ✦ AI FOLLOW-UP
+            ✦ TOUCH
           </button>
           <button
             onClick={() => { setEditing(true); setEditData(lead); }}
@@ -636,183 +537,23 @@ export default function ContactProfile() {
         </div>
       </div>
 
-      {/* ── AI Panel ── */}
-      {showAI && (
-        <div className="card-ink" style={{ padding: "20px", marginBottom: "24px" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px", gap: "12px", flexWrap: "wrap" }}>
-            <p style={{ fontSize: "10px", letterSpacing: "0.18em", color: "var(--aire-cream)", margin: 0, fontWeight: 500 }}>
-              ✦ AI FOLLOW-UP DRAFT
-            </p>
-            <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-              <button
-                onClick={generateFollowUp}
-                style={{
-                  fontSize: "10px",
-                  letterSpacing: "0.14em",
-                  padding: "6px 14px",
-                  background: "transparent",
-                  border: "1px solid var(--aire-border-ink)",
-                  color: "var(--aire-text-inv)",
-                  borderRadius: "999px",
-                  cursor: "pointer",
-                  fontWeight: 500,
-                }}
-              >
-                REGENERATE
-              </button>
-              {aiStream && lead.phone && (
-                <button
-                  onClick={() => sendAIDraft("sms")}
-                  disabled={sendingChannel !== null}
-                  title={`Send via Twilio to ${lead.phone}`}
-                  style={{
-                    fontSize: "10px",
-                    letterSpacing: "0.14em",
-                    padding: "6px 14px",
-                    background: "var(--aire-coral)",
-                    border: "1px solid var(--aire-coral)",
-                    color: "var(--aire-ink)",
-                    borderRadius: "999px",
-                    cursor: sendingChannel !== null ? "wait" : "pointer",
-                    fontWeight: 700,
-                  }}
-                >
-                  {sendingChannel === "sms" ? "SENDING…" : "SEND SMS →"}
-                </button>
-              )}
-              {aiStream && lead.email && (
-                <button
-                  onClick={() => sendAIDraft("email")}
-                  disabled={sendingChannel !== null}
-                  title={`Send via SendGrid to ${lead.email}`}
-                  style={{
-                    fontSize: "10px",
-                    letterSpacing: "0.14em",
-                    padding: "6px 14px",
-                    background: "transparent",
-                    border: "1px solid var(--aire-coral)",
-                    color: "var(--aire-coral)",
-                    borderRadius: "999px",
-                    cursor: sendingChannel !== null ? "wait" : "pointer",
-                    fontWeight: 600,
-                  }}
-                >
-                  {sendingChannel === "email" ? "SENDING…" : "SEND EMAIL →"}
-                </button>
-              )}
-              {aiStream && (
-                <button
-                  onClick={() => navigator.clipboard.writeText(aiStream)}
-                  style={{
-                    fontSize: "10px",
-                    letterSpacing: "0.14em",
-                    padding: "6px 14px",
-                    background: "transparent",
-                    border: "1px solid var(--aire-border-ink)",
-                    color: "var(--aire-text-inv)",
-                    borderRadius: "999px",
-                    cursor: "pointer",
-                  }}
-                >
-                  COPY
-                </button>
-              )}
-            </div>
-          </div>
-          {sendToast && (
-            <p style={{
-              fontSize: "11px",
-              color: sendToast.includes("failed") || sendToast.includes("No ")
-                ? "var(--aire-coral)"
-                : "var(--aire-mint)",
-              marginBottom: "8px",
-              letterSpacing: "0.04em",
-            }}>
-              {sendToast}
-            </p>
-          )}
-          <div
-            ref={aiRef}
-            style={{
-              background: "rgba(0,0,0,0.25)",
-              border: "1px solid var(--aire-border-ink)",
-              borderRadius: "12px",
-              padding: "16px",
-              minHeight: "80px",
-              maxHeight: "240px",
-              overflowY: "auto",
-              fontSize: "13px",
-              color: "var(--aire-text-inv)",
-              lineHeight: "1.7",
-              whiteSpace: "pre-wrap",
-            }}
-          >
-            {aiLoading
-              ? <span style={{ color: "var(--aire-muted-inv)" }}>Drafting...</span>
-              : aiStream || <span style={{ color: "var(--aire-muted-inv)" }}>Generating follow-up...</span>}
-          </div>
-        </div>
-      )}
+      {/* ── Touch Composer — unified channel send + AI suggest ── */}
+      <div ref={composerRef}>
+        <TouchComposer
+          lead={lead}
+          onTouchSent={log => setLead(prev => prev ? {
+            ...prev,
+            timeline_logs: [log, ...prev.timeline_logs],
+            lastContactDate: new Date().toISOString(),
+          } : prev)}
+        />
+      </div>
 
       {/* ── Two-column layout ── */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 340px", gap: "20px" }}>
 
         {/* LEFT: Timeline + Tasks */}
         <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
-
-          {/* Log Activity */}
-          <div ref={logSectionRef} className="card-light" style={{ padding: "20px" }}>
-            <p style={{ fontSize: "10px", letterSpacing: "0.18em", color: "var(--aire-muted)", marginBottom: "14px", fontWeight: 500 }}>
-              LOG ACTIVITY
-            </p>
-
-            <div style={{ display: "flex", gap: "6px", marginBottom: "12px", flexWrap: "wrap" }}>
-              {(["note", "call", "text", "email", "meeting", "showing"] as const).map(m => (
-                <button
-                  key={m}
-                  onClick={() => setLogMethod(m)}
-                  className={logMethod === m ? "pill pill-ink" : "pill"}
-                  style={{ fontSize: "10px", letterSpacing: "0.14em", cursor: "pointer" }}
-                >
-                  {m.toUpperCase()}
-                </button>
-              ))}
-            </div>
-
-            {logMethod !== "note" && (
-              <div style={{ display: "flex", gap: "6px", marginBottom: "10px" }}>
-                {(["outbound", "inbound"] as const).map(d => (
-                  <button
-                    key={d}
-                    onClick={() => setLogDirection(d)}
-                    className={logDirection === d ? "pill pill-ink" : "pill"}
-                    style={{ fontSize: "10px", letterSpacing: "0.12em", cursor: "pointer" }}
-                  >
-                    {d.toUpperCase()}
-                  </button>
-                ))}
-              </div>
-            )}
-
-            <div style={{ display: "flex", gap: "8px" }}>
-              <input
-                value={logNote}
-                onChange={e => setLogNote(e.target.value)}
-                onKeyDown={e => e.key === "Enter" && addLog()}
-                placeholder={`Add ${logMethod}...`}
-                className="aire-input"
-                style={{ flex: 1, fontSize: "13px" }}
-              />
-              <button
-                onClick={addLog}
-                disabled={addingLog}
-                className="btn-primary"
-                style={{ fontSize: "11px", letterSpacing: "0.14em", padding: "9px 20px" }}
-              >
-                LOG
-              </button>
-            </div>
-          </div>
 
           {/* Timeline */}
           <div className="card-light" style={{ padding: "20px" }}>
@@ -897,6 +638,32 @@ export default function ContactProfile() {
                 })}
               </div>
             )}
+
+            {/* Quick note / inbound log */}
+            <div style={{ display: "flex", gap: "8px", marginTop: "16px" }}>
+              <input
+                value={logNote}
+                onChange={e => setLogNote(e.target.value)}
+                onKeyDown={e => e.key === "Enter" && addNote()}
+                placeholder="Add a quick note or inbound log…"
+                className="aire-input"
+                style={{ flex: 1, fontSize: "12px" }}
+              />
+              <button
+                onClick={addNote}
+                disabled={addingLog || !logNote.trim()}
+                className="btn-ghost"
+                style={{
+                  fontSize: "10px",
+                  letterSpacing: "0.14em",
+                  padding: "8px 16px",
+                  opacity: logNote.trim() ? 1 : 0.4,
+                  cursor: logNote.trim() ? "pointer" : "not-allowed",
+                }}
+              >
+                LOG
+              </button>
+            </div>
           </div>
 
           {/* Tasks */}
