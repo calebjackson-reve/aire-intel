@@ -5,8 +5,15 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { prisma } from "./prisma";
 import { getTodayCT } from "./brief-date";
-import { getMortgageRate, getRateAlert } from "./housing-intel";
-import { getMarketStats, buildCMASummary } from "./rentcast";
+import { getMortgageRate } from "./housing-intel";
+import { buildCMASummary } from "./rentcast";
+import {
+  fetchRateSubagent,
+  fetchMarketSubagent,
+  fetchCalendarSubagent,
+  fetchZillowSubagent,
+  fetchLeadActivitySubagent,
+} from "./brief-subagents";
 
 export interface BriefItem {
   actionQueueId?: string;
@@ -40,6 +47,16 @@ function getAnthropicClient() {
 /** Assemble today's Morning Brief from all overnight agent outputs. */
 export async function assembleBrief(agentRunId?: string): Promise<AssembledBrief> {
   const today = getTodayCT();
+
+  // ── 0. Parallel sub-agent fetch (each isolated, never throws) ─────────────
+  const [rateResult, marketResult, calendarResult, zillowResult, leadsResult] =
+    await Promise.allSettled([
+      fetchRateSubagent(),
+      fetchMarketSubagent("70808"),
+      fetchCalendarSubagent(),
+      fetchZillowSubagent(),
+      fetchLeadActivitySubagent(),
+    ]);
 
   // ── 1. Today's ActionQueue items ───────────────────────────────────────────
   const queueItems = await prisma.actionQueue.findMany({
@@ -213,14 +230,9 @@ export async function assembleBrief(agentRunId?: string): Promise<AssembledBrief
       };
     });
 
-  // Also add Zillow hot listings as context items
-  try {
-    const hotListings = await prisma.zillowHotListing.findMany({
-      where: { fetchedAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) } },
-      orderBy: { viewCount: "desc" },
-      take: 3,
-    });
-    for (const listing of hotListings) {
+  // Also add Zillow hot listings as context items — sourced from zillowResult sub-agent
+  if (zillowResult.status === "fulfilled" && zillowResult.value !== null) {
+    for (const listing of zillowResult.value.listings.slice(0, 3)) {
       const alreadyIncluded = marketMovement.some(
         (i) => (i.metadata as Record<string, unknown>)?.zpid === listing.zpid
       );
@@ -239,134 +251,162 @@ export async function assembleBrief(agentRunId?: string): Promise<AssembledBrief
         });
       }
     }
-  } catch {
-    // Non-fatal
   }
 
-  // ── 5a. Market pulse — FRED mortgage rate + Rentcast market stats ─────────
-  try {
-    const [rateAlert, brStats] = await Promise.allSettled([
-      getRateAlert(0.125),
-      getMarketStats("70808"), // Baton Rouge core zip — representative pulse
-    ]);
-
-    // Rate alert → if triggered, surface as high-priority item + queue blast drafts
-    if (rateAlert.status === "fulfilled" && rateAlert.value.triggered) {
-      const alert = rateAlert.value;
+  // ── 5a. Market pulse — sourced from sub-agents (rateResult, marketResult) ──
+  // Rate alert: rateResult
+  if (rateResult.status === "fulfilled" && rateResult.value !== null) {
+    const r = rateResult.value;
+    if (r.alert.triggered) {
       marketMovement.unshift({
         type: "rate_alert",
-        title: `Rate ${alert.direction === "down" ? "Drop" : "Jump"}: ${alert.delta > 0 ? "+" : ""}${alert.delta.toFixed(3)}%`,
-        subtitle: alert.message,
+        title: `Rate ${r.alert.direction === "down" ? "Drop" : "Jump"}: ${r.delta > 0 ? "+" : ""}${r.delta.toFixed(3)}%`,
+        subtitle: r.summary,
         priority: 1,
-        metadata: { delta: alert.delta, direction: alert.direction },
+        metadata: { delta: r.delta, direction: r.alert.direction },
       });
 
       // Create blast drafts for active buyer leads with no recent outreach
-      const twoDaysAgo = new Date(Date.now() - 2 * 86_400_000);
-      const activeBuyers = await prisma.lead.findMany({
-        where: {
-          stage: { in: ["active", "new_lead"] },
-          phone: { not: null },
-          timeline_logs: { none: { direction: "outbound", createdAt: { gte: twoDaysAgo } } },
-        },
-        take: 20,
-        orderBy: { lastContactDate: "asc" },
-      });
+      try {
+        const twoDaysAgo = new Date(Date.now() - 2 * 86_400_000);
+        const activeBuyers = await prisma.lead.findMany({
+          where: {
+            stage: { in: ["active", "new_lead"] },
+            phone: { not: null },
+            timeline_logs: { none: { direction: "outbound", createdAt: { gte: twoDaysAgo } } },
+          },
+          take: 20,
+          orderBy: { lastContactDate: "asc" },
+        });
 
-      for (const lead of activeBuyers) {
+        for (const lead of activeBuyers) {
+          const alreadyQueued = await prisma.actionQueue.findFirst({
+            where: {
+              leadId: lead.id,
+              type: "draft_message",
+              briefDate: today,
+              payload: { path: ["trigger"], equals: "rate_alert" },
+            },
+          });
+          if (alreadyQueued) continue;
+
+          const direction = r.alert.direction === "down" ? "dropped" : "jumped";
+          const body =
+            r.alert.direction === "down"
+              ? `Hey ${lead.name?.split(" ")[0] ?? "there"} — rates just ${direction} to ${r.rate}%. Your monthly payment on a $300k home just got about $${Math.round(Math.abs(r.delta) * 300000 / 12 / 100)} cheaper. Wanted to make sure you heard. Worth a quick chat? — Caleb`
+              : `Hey ${lead.name?.split(" ")[0] ?? "there"} — rates moved up to ${r.rate}% this week. If you've been thinking about locking in, now might be the time to talk. — Caleb`;
+
+          await prisma.actionQueue.create({
+            data: {
+              type: "draft_message",
+              briefDate: today,
+              status: "pending",
+              priority: 2,
+              leadId: lead.id,
+              agentType: "market_intel",
+              payload: {
+                trigger: "rate_alert",
+                channel: "sms",
+                leadName: lead.name,
+                body,
+                rateDelta: r.delta,
+                direction: r.alert.direction,
+              },
+            },
+          });
+        }
+      } catch {
+        // Non-fatal — blast drafts failed, rate alert still surfaced
+      }
+    }
+  }
+
+  // Market stats snapshot: marketResult
+  if (marketResult.status === "fulfilled" && marketResult.value !== null) {
+    const m = marketResult.value;
+    marketMovement.push({
+      type: "market_stats",
+      title: `BR Market: Median $${Math.round((m.medianPrice ?? 0) / 1000)}k`,
+      subtitle: m.summary,
+      priority: 5,
+      metadata: { medianPrice: m.medianPrice, daysOnMarket: m.daysOnMarket, zip: "70808" },
+    });
+  }
+
+  // Calendar events: calendarResult — surface next-8h appointments as non-negotiables
+  if (calendarResult.status === "fulfilled" && calendarResult.value !== null) {
+    const cal = calendarResult.value;
+    for (const appt of cal.appointments) {
+      nonNegotiables.push({
+        type: "calendar_event",
+        title: appt.title,
+        subtitle: appt.location ?? cal.summary,
+        dueDate: appt.start,
+        priority: 2,
+        metadata: { calendarEventId: appt.id, allDay: appt.allDay },
+      });
+    }
+  }
+
+  // Lead activity: leadsResult — surface hot leads as going-cold candidates
+  if (leadsResult.status === "fulfilled" && leadsResult.value !== null) {
+    const la = leadsResult.value;
+    for (const lead of la.hotLeads) {
+      const alreadyInCold = goingCold.some((i) => i.leadId === lead.id);
+      if (!alreadyInCold) {
+        goingCold.push({
+          type: "hot_lead",
+          title: `Active: ${lead.name}`,
+          subtitle: leadsResult.value?.summary,
+          leadId: lead.id,
+          leadName: lead.name,
+          priority: 3,
+          metadata: { lastContactDate: lead.lastContactDate?.toISOString() },
+        });
+      }
+    }
+  }
+
+  // ── 5b. Content flywheel — Zillow viral → auto-queue post suggestions ──────
+  // Sourced from zillowResult sub-agent (top 2 listings)
+  if (zillowResult.status === "fulfilled" && zillowResult.value !== null) {
+    const viralListings = zillowResult.value.listings.slice(0, 2);
+    for (const listing of viralListings) {
+      try {
         const alreadyQueued = await prisma.actionQueue.findFirst({
           where: {
-            leadId: lead.id,
-            type: "draft_message",
+            type: "post_content",
             briefDate: today,
-            payload: { path: ["trigger"], equals: "rate_alert" },
+            payload: { path: ["zpid"], equals: listing.zpid },
           },
         });
         if (alreadyQueued) continue;
 
-        const direction = alert.direction === "down" ? "dropped" : "jumped";
-        const body = alert.direction === "down"
-          ? `Hey ${lead.name?.split(" ")[0] ?? "there"} — rates just ${direction} to ${(await getMortgageRate()).current}%. Your monthly payment on a $300k home just got about $${Math.round(Math.abs(alert.delta) * 300000 / 12 / 100)} cheaper. Wanted to make sure you heard. Worth a quick chat? — Caleb`
-          : `Hey ${lead.name?.split(" ")[0] ?? "there"} — rates moved up to ${(await getMortgageRate()).current}% this week. If you've been thinking about locking in, now might be the time to talk. — Caleb`;
-
         await prisma.actionQueue.create({
           data: {
-            type: "draft_message",
+            type: "post_content",
             briefDate: today,
             status: "pending",
-            priority: 2,
-            leadId: lead.id,
-            agentType: "market_intel",
+            priority: 3,
+            agentType: "content_scheduler",
             payload: {
-              trigger: "rate_alert",
-              channel: "sms",
-              leadName: lead.name,
-              body,
-              rateDelta: alert.delta,
-              direction: alert.direction,
+              contentType: "listing_spotlight",
+              zpid: listing.zpid,
+              address: listing.address,
+              price: listing.price,
+              photoUrl: listing.photoUrl,
+              listingUrl: listing.listingUrl,
+              viewCount: listing.viewCount,
+              platform: "instagram",
+              caption: `This home in Baton Rouge just hit ${(listing.viewCount ?? 0).toLocaleString()} views on Zillow — here's why the market is watching it.`,
+              trigger: "zillow_viral",
             },
           },
         });
+      } catch {
+        // Non-fatal per listing
       }
     }
-
-    // Market stats snapshot
-    if (brStats.status === "fulfilled") {
-      const s = brStats.value;
-      marketMovement.push({
-        type: "market_stats",
-        title: `BR Market: Median $${Math.round((s.medianPrice ?? 0) / 1000)}k`,
-        subtitle: `${s.averageDaysOnMarket ?? "—"}d avg DOM`,
-        priority: 5,
-        metadata: { stats: s, zip: "70808" },
-      });
-    }
-  } catch {
-    // Non-fatal — brief continues without market pulse
-  }
-
-  // ── 5b. Content flywheel — Zillow viral → auto-queue post suggestions ──────
-  try {
-    const viralListings = await prisma.zillowHotListing.findMany({
-      where: { fetchedAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) } },
-      orderBy: { viewCount: "desc" },
-      take: 2,
-    });
-
-    for (const listing of viralListings) {
-      const alreadyQueued = await prisma.actionQueue.findFirst({
-        where: {
-          type: "post_content",
-          briefDate: today,
-          payload: { path: ["zpid"], equals: listing.zpid },
-        },
-      });
-      if (alreadyQueued) continue;
-
-      await prisma.actionQueue.create({
-        data: {
-          type: "post_content",
-          briefDate: today,
-          status: "pending",
-          priority: 3,
-          agentType: "content_scheduler",
-          payload: {
-            contentType: "listing_spotlight",
-            zpid: listing.zpid,
-            address: listing.address,
-            price: listing.price,
-            photoUrl: listing.photoUrl,
-            listingUrl: listing.listingUrl,
-            viewCount: listing.viewCount,
-            platform: "instagram",
-            caption: `This home in Baton Rouge just hit ${(listing.viewCount ?? 0).toLocaleString()} views on Zillow — here's why the market is watching it. 👀`,
-            trigger: "zillow_viral",
-          },
-        },
-      });
-    }
-  } catch {
-    // Non-fatal
   }
 
   // ── 5c. Pre-appointment CMA — auto-run comps for today's scheduled appts ───
