@@ -23,6 +23,13 @@
     { "path": "/api/agents/revival-tracker",         "schedule": "30 13 * * 1" },
     { "path": "/api/agents/meta-discovery",           "schedule": "0 5 28 * *"  },
     { "path": "/api/cron/render-poll",                "schedule": "*/5 * * * *"  },
-    { "path": "/api/agents/phase-b-eval",             "schedule": "0 15 15 * *"  }
+    { "path": "/api/agents/phase-b-eval",             "schedule": "0 15 15 * *"  },
+    { "path": "/api/agents/rate-drop-blast",          "schedule": "0 12 * * *"   },
+    { "path": "/api/agents/pre-appt-cma",             "schedule": "0 11 * * *"   },
+    { "path": "/api/agents/calendar-sync",            "schedule": "0 */2 * * *"  },
+    { "path": "/api/agents/gmail-lead-detect",        "schedule": "*/30 * * * *" },
+    { "path": "/api/agents/market-weekly",            "schedule": "0 10 * * 1"   },
+    { "path": "/api/agents/zillow-content",           "schedule": "0 9 * * 2,5"  },
+    { "path": "/api/agents/messenger-monitor",        "schedule": "0 */2 * * *"  }
   ]
 }
