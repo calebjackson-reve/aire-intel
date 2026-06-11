@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 // Smart Plan executor API
 // POST /api/smart-plans/execute/enroll  → enroll a lead in a plan
 // POST /api/smart-plans/execute/advance → advance all due enrollments (dashboard trigger)

@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 // AIRE: loop:render-job-completion
 // Cron: every 5 minutes. Finds RenderJob records stuck in "rendering" for > 30 min.
 // If renderId is set, polls RENDER_API_URL for status. Otherwise logs a stale-job warning.

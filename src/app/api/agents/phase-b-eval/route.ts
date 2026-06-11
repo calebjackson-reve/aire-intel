@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 // AIRE: loop:phase-b-graduation
 // Vercel cron: 0 15 15 * * (9AM CT on the 15th of each month)
 // Analyzes ActionQueue history by action type — reports Phase B graduation candidates. Never flips requiresApproval.

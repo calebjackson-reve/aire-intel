@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 // AIRE: loop:propstream-intent-revival
 // Weekly Wednesday 7AM CT cron. Scores cold leads by Paragon listing activity in their
 // target areas (new listings × 2 + price-drop signals × 3) and queues draft_message

@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 // Lead score model — calibration control
 // POST /api/leads/score/recalibrate → retrain the close-probability model from
 //                                      full lead/deal/loop history and persist it

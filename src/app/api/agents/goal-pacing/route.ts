@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 // AIRE: loop:goal-pacing-alert
 // Vercel cron: 0 13 * * 1 (7AM CT Monday)
 // Compares leads, outbound contacts, and closings against Setting targets; writes pacing Notification.

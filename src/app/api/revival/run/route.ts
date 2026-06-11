@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 // Dead-Lead Revival Agent — generate the approve-queue drafts for a cohort
 //
 // POST /api/revival/run    body: { cohortId, limit? }

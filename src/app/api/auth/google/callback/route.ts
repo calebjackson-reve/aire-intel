@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import { NextRequest } from "next/server";
 import { exchangeGoogleCode } from "@/lib/google";
 import { prisma } from "@/lib/prisma";

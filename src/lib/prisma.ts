@@ -14,7 +14,9 @@ const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
  * "postgresql" and run a fresh `prisma migrate` — see DEPLOYMENT.md.)
  */
 function createPrismaClient() {
-  const url = process.env.DATABASE_URL ?? "file:./prisma/dev.db";
+  // Strip surrounding quotes in case the value was pasted with them (e.g. "postgresql://...")
+  const raw = process.env.DATABASE_URL ?? "file:./prisma/dev.db";
+  const url = raw.replace(/^["']|["']$/g, "");
 
   if (url.startsWith("postgres://") || url.startsWith("postgresql://")) {
     // Production: Postgres via driver adapter
@@ -22,6 +24,13 @@ function createPrismaClient() {
     const { PrismaPg } = require("@prisma/adapter-pg");
     const adapter = new PrismaPg({ connectionString: url });
     return new PrismaClient({ adapter, log: ["error"] });
+  }
+
+  // In production, a non-postgres URL is a misconfiguration — fail fast with a clear message
+  if (process.env.NODE_ENV === "production") {
+    throw new Error(
+      `DATABASE_URL must be a PostgreSQL connection string in production. Got: ${url.slice(0, 20)}...`
+    );
   }
 
   // Local dev: SQLite via better-sqlite3 adapter

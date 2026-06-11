@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import Anthropic from "@anthropic-ai/sdk";
 import { prisma } from "@/lib/prisma";
 import { REVE_PIPELINE_SYSTEM } from "@/lib/reve-system-prompt";

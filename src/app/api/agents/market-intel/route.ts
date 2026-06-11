@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import { prisma } from "@/lib/prisma";
 import { fetchViralListings, viralScore } from "@/lib/zillow";
 import { verifyCronSecret, cronUnauthorized } from "@/lib/cron-auth";

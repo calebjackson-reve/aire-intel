@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import { verifyCronSecret, cronUnauthorized } from "@/lib/cron-auth";
 import { startRun, finishRun, failRun } from "@/lib/agent-run";
 import { assembleBrief } from "@/lib/brief-assembler";

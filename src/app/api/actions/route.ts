@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import { prisma } from "@/lib/prisma";
 
 // Returns a snapshot of the 4 Do-It-Now action card states for the dashboard.

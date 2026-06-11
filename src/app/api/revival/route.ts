@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 // Dead-Lead Revival — proof & cohort API
 //
 // GET  /api/revival                  → live proof summary: dead-lead pool, baseline,

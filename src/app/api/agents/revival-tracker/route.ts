@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 // AIRE: loop:revival-performance
 // Vercel cron: 30 13 * * 1 (7:30AM CT Monday, bi-weekly via lastEvaluation guard)
 // Analyzes RevivalCohort records + ContactLog inbound replies over 30 days.

@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 // PropStream CSV import — attach homeowner intel to leads
 //
 // POST /api/import/propstream            (multipart file OR raw CSV body)

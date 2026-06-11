@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import { prisma } from "@/lib/prisma";
 import { getDeadLeads } from "@/lib/revival";
 import { generateDraft } from "@/lib/draft-agent";

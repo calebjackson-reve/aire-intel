@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import { NextRequest } from "next/server";
 import { getTwilioConfig, sendSMS, normalizePhone } from "@/lib/twilio";
 import { prisma } from "@/lib/prisma";

@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 // AIRE: loop:test-coverage-ratchet
 // Vercel cron: 0 7 * * 6 (1AM CT Saturday)
 // Reads coverage data written by coverage-check.sh, compares to baseline,

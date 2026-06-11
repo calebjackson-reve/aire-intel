@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import { NextRequest } from "next/server";
 import { getSendGridConfig, sendEmail } from "@/lib/sendgrid";
 import { prisma } from "@/lib/prisma";

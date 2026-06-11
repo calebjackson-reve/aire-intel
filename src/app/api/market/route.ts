@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import Anthropic from "@anthropic-ai/sdk";
 
 function getClient() { return new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY }); }

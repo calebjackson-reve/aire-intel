@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 // AIRE: loop:sphere-reactivation
 // Monthly cron (1st of month, 8AM CT). Finds sphere contacts inactive 60+ days,
 // prioritizes by upcoming birthdays/anniversaries, queues 10 personalized check-in drafts.

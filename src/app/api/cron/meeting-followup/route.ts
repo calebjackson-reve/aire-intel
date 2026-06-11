@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 // Cron: meeting-followup — scans for calendly_followup_pending items past scheduledFor,
 // generates post-meeting draft via generateDraft(), converts to draft_message for approval.
 // AIRE: loop:calendly-post-meeting-followup

@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 // Sell-Intent API
 //
 // GET /api/leads/intent?id=<leadId>   → sell-intent score (0–100) + factors for one

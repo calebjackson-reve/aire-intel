@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 // Calendly webhook receiver
 // Handles invitee.created events → creates Task + Notification + Lead (if new)
 // AIRE: loop:calendly-post-meeting-followup

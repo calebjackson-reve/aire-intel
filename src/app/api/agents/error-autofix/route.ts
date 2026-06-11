@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 // AIRE: loop:error-memory-autofix
 // Nightly autofix: reads recurring error patterns, applies targeted fixes, oracle-gates each one.
 

@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 // Voice Corpus — mine & curate
 //
 // GET  /api/voice/mine          → preview the currently-saved corpus + a fresh mine

@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import { NextRequest } from "next/server";
 import { fetchActiveListings } from "@/lib/paragon";
 import { logError } from "@/lib/error-memory";

@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import { verifyCronSecret, cronUnauthorized } from "@/lib/cron-auth";
 
 // POST /api/agents/run-all — trigger all agents in sequence (for dev/testing and manual runs)

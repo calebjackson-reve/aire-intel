@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import { prisma } from "@/lib/prisma";
 
 // Close probability by pipeline stage — used to weight open pipeline into a forecast.

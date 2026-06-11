@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 // Lead scoring endpoint
 // GET /api/leads/score?id=xxx  → score a single lead (with component breakdown)
 // GET /api/leads/score         → score all non-closed leads (top 20 by score)

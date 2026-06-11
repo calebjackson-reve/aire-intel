@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 // AIRE: loop:audit-debt-burndown
 // Vercel cron: 0 7 * * 0 (2AM CT Sunday)
 // Scans src/ for TODO/FIXME/placeholder debt and TS errors; reports top items.

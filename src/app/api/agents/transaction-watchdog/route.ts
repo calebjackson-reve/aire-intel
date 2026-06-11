@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import { prisma } from "@/lib/prisma";
 import { generateDraft } from "@/lib/draft-agent";
 import { verifyCronSecret, cronUnauthorized } from "@/lib/cron-auth";

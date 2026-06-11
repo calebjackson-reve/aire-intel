@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 // Workflow Orchestrator — manual trigger / inspection
 //
 // POST /api/orchestrator   → run one orchestration tick now, return what fired.

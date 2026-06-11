@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 // AIRE: loop:monthly-meta-discovery
 // Vercel cron: 0 5 28 * * (11PM CT 27th = 5AM UTC 28th)
 // Reads REGISTRY.md, pulls AgentRun/ActionQueue metrics per loop, classifies green/yellow/red.

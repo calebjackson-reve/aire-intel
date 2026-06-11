@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import { getLoftyCredentials, getLoftyAccessToken, fetchAllLoftyLeads, mapLoftyLeadToAire, LoftyLead } from "@/lib/lofty";
 
 const HOT_STAGES = ["hot list", "hot"];

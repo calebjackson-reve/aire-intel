@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import { fetchUpcomingEvents } from "@/lib/google-calendar";
 import { prisma } from "@/lib/prisma";
 

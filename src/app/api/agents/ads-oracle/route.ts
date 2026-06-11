@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 // AIRE: loop:paid-ads-oracle
 // Vercel cron: 0 14 * * 1 (8AM CT Monday)
 // Pulls Meta Ads campaign performance for last 7 days; classifies and queues kill/scale tasks.

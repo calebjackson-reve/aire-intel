@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 // AIRE: loop:render-job-completion
 // Webhook from external render service (Remotion Cloud or custom). Push-based alternative to the poll cron.
 // Validates shared secret, updates RenderJob + ContentProject, queues post_content for approval.

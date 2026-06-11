@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 // AIRE: loop:agent-health-monitor
 // Daily 6:30 AM CT cron. Checks AgentRun records for all 6 inner agent types in the last 24h,
 // computes a health score, alerts on failures, and verifies DailyBrief was assembled.

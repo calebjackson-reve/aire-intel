@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 // Message Draft Queue — list / create / approve / dismiss
 //
 // GET  /api/drafts?status=pending     → list drafts (default: pending) + lead context

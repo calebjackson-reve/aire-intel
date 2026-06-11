@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 // AIRE: loop:content-performance-learning
 // Vercel cron: 0 5 * * 0 (Sunday 11PM CT = Monday 5AM UTC)
 // Pulls 30-day Meta engagement data, groups by content type, writes learning metrics to Settings.

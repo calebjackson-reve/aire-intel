@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import { getCalendlyConfig, getCalendlyLink } from "@/lib/calendly";
 
 export async function GET() {

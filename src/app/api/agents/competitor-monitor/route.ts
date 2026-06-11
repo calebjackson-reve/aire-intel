@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 // AIRE: loop:competitor-monitor
 // Vercel cron: 0 13 * * 5 (7AM CT Friday)
 // Weekly digest: Paragon MLS activity in tracked BRR ZIPs — high-volume agents, fast movers, price cuts.
