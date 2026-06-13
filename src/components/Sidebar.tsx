@@ -3,9 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import {
-  Sunrise, GitBranch, Users, PenTool, Settings, Map,
-} from "lucide-react";
+import { Sunrise, GitBranch, Users, PenTool, Settings, Map, Pin, PinOff } from "lucide-react";
 
 interface NavItem {
   href: string;
@@ -14,22 +12,22 @@ interface NavItem {
   badgeKey?: "overdue" | "queue";
 }
 
-// Five surfaces. Everything else is reachable via AIRE bar or secondary links.
 const ICON = 17;
 
 const PRIMARY: NavItem[] = [
-  { href: "/today", label: "Today", icon: <Sunrise size={ICON} />, badgeKey: "queue" },
-  { href: "/pipeline", label: "Pipeline", icon: <GitBranch size={ICON} />, badgeKey: "overdue" },
-  { href: "/contacts", label: "Contacts", icon: <Users size={ICON} /> },
-  { href: "/market", label: "Market", icon: <Map size={ICON} /> },
-  { href: "/create-post", label: "Content", icon: <PenTool size={ICON} /> },
-  { href: "/settings", label: "Settings", icon: <Settings size={ICON} /> },
+  { href: "/today",          label: "Today",    icon: <Sunrise size={ICON} />,   badgeKey: "queue" },
+  { href: "/pipeline",       label: "Pipeline", icon: <GitBranch size={ICON} />, badgeKey: "overdue" },
+  { href: "/contacts",       label: "Contacts", icon: <Users size={ICON} /> },
+  { href: "/market",         label: "Market",   icon: <Map size={ICON} /> },
+  { href: "/create-post",    label: "Content",  icon: <PenTool size={ICON} /> },
+  { href: "/settings",       label: "Settings", icon: <Settings size={ICON} /> },
 ];
 
 export default function Sidebar() {
   const pathname = usePathname();
   const [overdueCount, setOverdueCount] = useState(0);
   const [queueCount, setQueueCount] = useState(0);
+  const [pinned, setPinned] = useState(false); // pinned = always expanded
 
   useEffect(() => {
     async function load() {
@@ -66,7 +64,10 @@ export default function Sidebar() {
   }
 
   return (
-    <aside className="aire-nav">
+    <aside
+      className="aire-nav"
+      style={pinned ? { width: "var(--sidebar-expanded)" } : undefined}
+    >
       <Link href="/today" className="brand" aria-label="AIRE — Today">
         <div className="mk">A</div>
         <div className="ni-label">
@@ -89,6 +90,28 @@ export default function Sidebar() {
           </Link>
         ))}
       </div>
+
+      {/* Pin/collapse toggle — visible when hovered or pinned */}
+      <button
+        onClick={() => setPinned(v => !v)}
+        title={pinned ? "Collapse sidebar" : "Pin sidebar open"}
+        className="ni-label"
+        style={{
+          width: "100%", display: "flex", alignItems: "center", gap: 8,
+          padding: "8px 14px", margin: "0 0 6px",
+          background: "none", border: "none", cursor: "pointer",
+          color: "var(--aire-muted)", fontSize: 11, fontWeight: 500,
+          fontFamily: "inherit", transition: "color 150ms",
+        }}
+        onMouseEnter={e => (e.currentTarget.style.color = "var(--aire-text)")}
+        onMouseLeave={e => (e.currentTarget.style.color = "var(--aire-muted)")}
+      >
+        {pinned
+          ? <PinOff size={13} />
+          : <Pin size={13} />
+        }
+        {pinned ? "Unpin" : "Pin open"}
+      </button>
 
       <Link href="/settings" className="navfoot" style={{ textDecoration: "none" }} aria-label="Settings">
         <div className="av">CJ</div>
