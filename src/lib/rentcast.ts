@@ -48,6 +48,16 @@ function headers() {
   return { "X-Api-Key": key };
 }
 
+// RentCast's AVM endpoints don't return a confidence score, so derive one from
+// how tight the estimate's range is: a narrow band implies a more certain value.
+function deriveConfidence(estimate: number, low: number, high: number): "HIGH" | "MEDIUM" | "LOW" {
+  if (!estimate || !low || !high || high <= low) return "LOW";
+  const spread = (high - low) / estimate;
+  if (spread < 0.15) return "HIGH";
+  if (spread < 0.30) return "MEDIUM";
+  return "LOW";
+}
+
 // Sale AVM — what a property is worth to buy
 export async function getAVM(
   address: string,
@@ -60,11 +70,14 @@ export async function getAVM(
     const res = await fetch(`${BASE_URL}/avm/value?${params}`, { headers: headers() });
     if (!res.ok) throw new Error(`Rentcast AVM failed: ${res.status}`);
     const data = await res.json();
+    const price = data.price ?? data.priceEstimate ?? 0;
+    const low = data.priceLow ?? data.priceRangeLow ?? 0;
+    const high = data.priceHigh ?? data.priceRangeHigh ?? 0;
     return {
-      price: data.price ?? data.priceEstimate ?? 0,
-      priceRangeLow: data.priceLow ?? data.priceRangeLow ?? 0,
-      priceRangeHigh: data.priceHigh ?? data.priceRangeHigh ?? 0,
-      confidence: data.confidence ?? "LOW",
+      price,
+      priceRangeLow: low,
+      priceRangeHigh: high,
+      confidence: data.confidence ?? deriveConfidence(price, low, high),
       latitude: data.latitude ?? null,
       longitude: data.longitude ?? null,
     };
@@ -82,14 +95,16 @@ export async function getRentalAVM(
     if (!res.ok) throw new Error(`Rentcast rental AVM failed: ${res.status}`);
     const data = await res.json();
     const rent = data.rent ?? data.rentEstimate ?? 0;
+    const low = data.rentLow ?? data.rentRangeLow ?? 0;
+    const high = data.rentHigh ?? data.rentRangeHigh ?? 0;
     const grossYield = salePrice && salePrice > 0
       ? Number(((rent * 12 / salePrice) * 100).toFixed(2))
       : null;
     return {
       rent,
-      rentRangeLow: data.rentLow ?? data.rentRangeLow ?? 0,
-      rentRangeHigh: data.rentHigh ?? data.rentRangeHigh ?? 0,
-      confidence: data.confidence ?? "LOW",
+      rentRangeLow: low,
+      rentRangeHigh: high,
+      confidence: data.confidence ?? deriveConfidence(rent, low, high),
       grossYield,
     };
   }, { maxAttempts: 2, source: "rentcast/getRentalAVM" });
@@ -135,15 +150,69 @@ export async function getMarketStats(zipCode: string): Promise<MarketStats> {
     const res = await fetch(`${BASE_URL}/markets?${params}`, { headers: headers() });
     if (!res.ok) throw new Error(`Rentcast market stats failed: ${res.status}`);
     const data = await res.json();
+    // RentCast nests stats under saleData / rentalData — not flat on the root.
+    const sale = data.saleData ?? {};
+    const rental = data.rentalData ?? {};
     return {
-      averageRent: data.averageRent ?? null,
-      medianRent: data.medianRent ?? null,
-      averagePrice: data.averageListPrice ?? null,
-      medianPrice: data.medianListPrice ?? null,
-      averageDaysOnMarket: data.averageDaysOnMarket ?? null,
-      totalListings: data.totalListings ?? null,
+      averageRent: rental.averageRent ?? null,
+      medianRent: rental.medianRent ?? null,
+      averagePrice: sale.averagePrice ?? null,
+      medianPrice: sale.medianPrice ?? null,
+      // Prefer sale DOM/listing counts; fall back to rental side if sale is absent.
+      averageDaysOnMarket: sale.averageDaysOnMarket ?? rental.averageDaysOnMarket ?? null,
+      totalListings: sale.totalListings ?? rental.totalListings ?? null,
     };
   }, { maxAttempts: 2, source: "rentcast/getMarketStats" });
+}
+
+// Active sale listings for a ZIP code (basic tier endpoint)
+export interface RentcastListing {
+  id: string;
+  formattedAddress: string;
+  addressLine1: string;
+  city: string;
+  state: string;
+  zipCode: string;
+  bedrooms: number | null;
+  bathrooms: number | null;
+  squareFootage: number | null;
+  price: number | null;
+  daysOnMarket: number | null;
+  propertyType: string | null;
+  listingAgent: string | null;
+  status: string;
+}
+
+export async function fetchSaleListings(
+  zipCode: string,
+  limit = 50
+): Promise<RentcastListing[]> {
+  return withRetry(async () => {
+    const params = new URLSearchParams({ zipCode, status: "Active", limit: String(limit) });
+    const res = await fetch(`${BASE_URL}/listings/sale?${params}`, { headers: headers() });
+    if (!res.ok) throw new Error(`Rentcast listings failed: ${res.status}`);
+    const data = await res.json();
+    const items = Array.isArray(data) ? data : (data.listings ?? data.data ?? []);
+    return items.map((l: Record<string, unknown>) => ({
+      id: (l.id ?? l.zpid ?? l.mlsNumber ?? "") as string,
+      formattedAddress: (l.formattedAddress ?? l.address ?? "") as string,
+      addressLine1: (l.addressLine1 ?? l.address ?? "") as string,
+      city: (l.city ?? "") as string,
+      state: (l.state ?? "") as string,
+      zipCode: (l.zipCode ?? l.zip ?? "") as string,
+      bedrooms: (l.bedrooms ?? l.beds ?? null) as number | null,
+      bathrooms: (l.bathrooms ?? l.baths ?? null) as number | null,
+      squareFootage: (l.squareFootage ?? l.sqft ?? null) as number | null,
+      price: (l.price ?? l.listPrice ?? null) as number | null,
+      daysOnMarket: (l.daysOnMarket ?? null) as number | null,
+      propertyType: (l.propertyType ?? null) as string | null,
+      // RentCast returns listingAgent as an object {name, phone, email}; extract the name.
+      listingAgent: (typeof l.listingAgent === "object" && l.listingAgent
+        ? (l.listingAgent as { name?: string }).name ?? null
+        : (l.listingAgent ?? null)) as string | null,
+      status: (l.status ?? "Active") as string,
+    }));
+  }, { maxAttempts: 2, source: "rentcast/fetchSaleListings" });
 }
 
 // Convenience: full CMA summary for an address
