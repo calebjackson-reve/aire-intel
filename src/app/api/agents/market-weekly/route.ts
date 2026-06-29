@@ -4,7 +4,7 @@ export const dynamic = "force-dynamic";
 // Cron: 0 10 * * 1 — Monday morning market brief across 4 core Baton Rouge ZIP codes.
 // Combines Rentcast stats + FRED mortgage rate into a DailyBrief entry + post_content ActionQueue item.
 
-import { verifyCronSecret, cronUnauthorized } from "@/lib/cron-auth";
+import { verifyCronSecret, verifyCronOrInternal, cronUnauthorized } from "@/lib/cron-auth";
 import { startRun, finishRun, failRun } from "@/lib/agent-run";
 import { prisma } from "@/lib/prisma";
 import { getMarketStats, type MarketStats } from "@/lib/rentcast";
@@ -27,7 +27,8 @@ export async function POST(request: Request) {
   return runMarketWeekly();
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  if (!verifyCronOrInternal(request)) return cronUnauthorized();
   return runMarketWeekly();
 }
 

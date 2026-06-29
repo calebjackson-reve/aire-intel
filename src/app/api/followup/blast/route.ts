@@ -1,10 +1,10 @@
 export const dynamic = "force-dynamic";
 import { NextRequest } from "next/server";
-import Anthropic from "@anthropic-ai/sdk";
 import { prisma } from "@/lib/prisma";
 import { REVE_PIPELINE_SYSTEM } from "@/lib/reve-system-prompt";
 import { getTwilioConfig, sendSMS } from "@/lib/twilio";
 import { getSendGridConfig, sendEmail } from "@/lib/sendgrid";
+import { getLLM } from "@/lib/llm";
 
 // Batch Cold Follow-Up Blast
 //
@@ -18,8 +18,10 @@ import { getSendGridConfig, sendEmail } from "@/lib/sendgrid";
 //                      bump lead.lastContactDate. Missing Twilio/SendGrid keys
 //                      yield a soft per-row error instead of nuking the batch.
 
+// Hybrid router: haiku-tier blast drafts run locally when LOCAL_LLM_ENABLED=1,
+// with automatic cloud fallback (per-lead template fallback still applies).
 function getClient() {
-  return new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+  return getLLM();
 }
 
 interface DraftedMessage {

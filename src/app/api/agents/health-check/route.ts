@@ -3,7 +3,7 @@ export const dynamic = "force-dynamic";
 // Daily 6:30 AM CT cron. Checks AgentRun records for all 6 inner agent types in the last 24h,
 // computes a health score, alerts on failures, and verifies DailyBrief was assembled.
 
-import { verifyCronSecret, cronUnauthorized } from "@/lib/cron-auth";
+import { verifyCronSecret, verifyCronOrInternal, cronUnauthorized } from "@/lib/cron-auth";
 import { prisma } from "@/lib/prisma";
 import { getSetting, invalidateSettingsCache } from "@/lib/settings";
 import { getTwilioConfig, sendSMS } from "@/lib/twilio";
@@ -28,7 +28,8 @@ export async function POST(request: Request) {
   return runHealthCheck();
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  if (!verifyCronOrInternal(request)) return cronUnauthorized();
   return runHealthCheck();
 }
 

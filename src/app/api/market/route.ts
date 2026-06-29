@@ -10,7 +10,7 @@ export async function GET() {
   });
 
   const response = await getClient().messages.create({
-    model: "claude-sonnet-4-5",
+    model: "claude-sonnet-4-6",
     max_tokens: 600,
     system: [
       {

@@ -3,7 +3,7 @@ export const dynamic = "force-dynamic";
 // Vercel cron: 0 14 * * 1 (8AM CT Monday)
 // Pulls Meta Ads campaign performance for last 7 days; classifies and queues kill/scale tasks.
 
-import { verifyCronSecret, cronUnauthorized } from "@/lib/cron-auth";
+import { verifyCronSecret, verifyCronOrInternal, cronUnauthorized } from "@/lib/cron-auth";
 import { withRetry, logError } from "@/lib/error-memory";
 import { getSetting, invalidateSettingsCache } from "@/lib/settings";
 import { prisma } from "@/lib/prisma";
@@ -314,7 +314,8 @@ export async function POST(request: Request) {
   }
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  if (!verifyCronOrInternal(request)) return cronUnauthorized();
   try {
     return await runAdsOracle();
   } catch (err) {

@@ -4,7 +4,7 @@ export const dynamic = "force-dynamic";
 // Cron: 0 */2 * * * — Syncs Google Calendar events to Task records (every 2 hours).
 // Uses title prefix "[GCal:{eventId}]" as the dedup key since Task has no externalId field.
 
-import { verifyCronSecret, cronUnauthorized } from "@/lib/cron-auth";
+import { verifyCronSecret, verifyCronOrInternal, cronUnauthorized } from "@/lib/cron-auth";
 import { startRun, finishRun, failRun } from "@/lib/agent-run";
 import { prisma } from "@/lib/prisma";
 import { fetchUpcomingEvents } from "@/lib/google-calendar";
@@ -19,7 +19,8 @@ export async function POST(request: Request) {
   return runCalendarSync();
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  if (!verifyCronOrInternal(request)) return cronUnauthorized();
   return runCalendarSync();
 }
 

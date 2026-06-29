@@ -15,11 +15,14 @@ export interface SkipTraceResult {
 function headers() {
   const key = process.env.BATCHDATA_API_KEY;
   if (!key) throw new Error("BATCHDATA_API_KEY not set");
-  return { "Content-Type": "application/json", "X-API-Key": key };
+  return { "Content-Type": "application/json", "Authorization": `Bearer ${key}` };
 }
 
 export async function skipTrace(opts: {
   address?: string;
+  city?: string;
+  state?: string;
+  zip?: string;
   firstName?: string;
   lastName?: string;
   name?: string;
@@ -27,7 +30,6 @@ export async function skipTrace(opts: {
   phone?: string;
 }): Promise<SkipTraceResult> {
   return withRetry(async () => {
-    // Parse name into first/last if provided as full name
     let firstName = opts.firstName;
     let lastName = opts.lastName;
     if (opts.name && !firstName) {
@@ -36,18 +38,23 @@ export async function skipTrace(opts: {
       lastName = parts.slice(1).join(" ") || undefined;
     }
 
-    const res = await fetch(`${BASE_URL}/person/search`, {
+    // Build request — address is nested object for BatchData v1
+    const request: Record<string, unknown> = { firstName, lastName };
+    if (opts.email) request.email = opts.email;
+    if (opts.phone) request.phone = opts.phone;
+    if (opts.address) {
+      request.address = {
+        street: opts.address,
+        city: opts.city,
+        state: opts.state ?? "LA",
+        zip: opts.zip,
+      };
+    }
+
+    const res = await fetch(`${BASE_URL}/property/skip-trace`, {
       method: "POST",
       headers: headers(),
-      body: JSON.stringify({
-        requests: [{
-          firstName,
-          lastName,
-          address: opts.address,
-          email: opts.email,
-          phone: opts.phone,
-        }],
-      }),
+      body: JSON.stringify({ requests: [request] }),
     });
 
     if (!res.ok) {
@@ -56,23 +63,23 @@ export async function skipTrace(opts: {
     }
 
     const data = await res.json();
-    const result = data.results?.[0];
+    const result = data.results?.[0]?.result ?? data.results?.[0];
     if (!result) return { phones: [], emails: [], currentAddress: null, relatives: [], employer: null };
 
     return {
-      phones: (result.phones ?? []).map((p: Record<string, unknown>) => ({
-        number: p.phoneNumber as string,
-        type: (p.phoneType as string) ?? "unknown",
+      phones: (result.phones ?? result.phoneNumbers ?? []).map((p: Record<string, unknown>) => ({
+        number: (p.phoneNumber ?? p.number) as string,
+        type: ((p.phoneType ?? p.type) as string) ?? "unknown",
         confidence: (p.confidence as number) ?? 0,
         doNotCall: Boolean(p.doNotCall),
       })),
-      emails: (result.emails ?? []).map((e: Record<string, unknown>) => ({
-        email: e.emailAddress as string,
+      emails: (result.emails ?? result.emailAddresses ?? []).map((e: Record<string, unknown>) => ({
+        email: (e.emailAddress ?? e.email) as string,
         confidence: (e.confidence as number) ?? 0,
       })),
-      currentAddress: result.currentAddress?.fullAddress ?? null,
-      relatives: (result.relatives ?? []).map((r: Record<string, unknown>) => r.fullName as string).filter(Boolean),
-      employer: result.employments?.[0]?.employer ?? null,
+      currentAddress: result.currentAddress?.fullAddress ?? result.address?.fullAddress ?? null,
+      relatives: (result.relatives ?? result.associatedPeople ?? []).map((r: Record<string, unknown>) => (r.fullName ?? r.name) as string).filter(Boolean),
+      employer: result.employments?.[0]?.employer ?? result.employment?.company ?? null,
       rawResponse: result,
     };
   }, { maxAttempts: 2, source: "batchdata.skipTrace", type: "api_failure" });

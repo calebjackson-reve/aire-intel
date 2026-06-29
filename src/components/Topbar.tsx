@@ -5,18 +5,25 @@ import { usePathname, useRouter } from "next/navigation";
 import NotificationCenter from "@/components/NotificationCenter";
 
 const PAGE_LABELS: Record<string, string> = {
-  "/": "Dashboard",
+  "/": "Today",
+  "/today": "Today",
   "/pipeline": "Pipeline",
   "/contacts": "Contacts",
-  "/linkedin": "LinkedIn",
   "/buyers": "Buyers",
+  "/follow-up": "Follow-Up",
   "/smart-plans": "Smart Plans",
   "/create-post": "Post Studio",
   "/social": "Social",
+  "/social-drafts": "Social Drafts",
+  "/messenger-outreach": "Messenger Outreach",
+  "/market": "Market",
   "/mls": "MLS",
   "/settings": "Settings",
   "/system": "System Health",
   "/content-calendar": "Content Calendar",
+  "/brief": "Morning Brief",
+  "/agents": "Agents",
+  "/chat": "AIRE Chat",
 };
 
 function getLabel(pathname: string) {

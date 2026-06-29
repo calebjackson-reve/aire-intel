@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
+import { DropboxPicker } from "@/components/DropboxPicker";
 
 interface ScheduledPost {
   id: string;
@@ -50,10 +51,13 @@ export default function SocialPage() {
   // Compose form
   const [caption, setCaption] = useState("");
   const [imageUrl, setImageUrl] = useState("");
+  const [imageFilename, setImageFilename] = useState("");
+  const [showDropbox, setShowDropbox] = useState(false);
   const [platform, setPlatform] = useState<"facebook" | "instagram" | "both">("both");
   const [publishNow, setPublishNow] = useState(false);
   const [scheduledFor, setScheduledFor] = useState("");
   const [publishing, setPublishing] = useState(false);
+  const dropzoneRef = useRef<HTMLDivElement>(null);
   const [publishResult, setPublishResult] = useState<string | null>(null);
 
   useEffect(() => {
@@ -255,25 +259,53 @@ export default function SocialPage() {
           </div>
 
           <div style={{ marginBottom: "16px" }}>
-            <label style={{ fontSize: "9px", letterSpacing: "0.16em", color: "var(--aire-muted-inv)", display: "block", marginBottom: "8px", fontWeight: 500 }}>IMAGE URL (optional)</label>
-            <input
-              value={imageUrl}
-              onChange={e => setImageUrl(e.target.value)}
-              style={{
-                width: "100%", padding: "10px 14px", fontSize: "12px",
-                background: "rgba(250,246,238,0.06)",
-                border: "1px solid var(--aire-border-ink)",
-                borderRadius: "10px",
-                color: "var(--aire-text-inv)",
-                outline: "none",
-                fontFamily: "inherit",
-                transition: "border-color 200ms",
-              }}
-              onFocus={e => { e.currentTarget.style.borderColor = "var(--aire-coral)"; }}
-              onBlur={e => { e.currentTarget.style.borderColor = "var(--aire-border-ink)"; }}
-              placeholder="https://..."
-            />
+            <label style={{ fontSize: "9px", letterSpacing: "0.16em", color: "var(--aire-muted-inv)", display: "block", marginBottom: "8px", fontWeight: 500 }}>PHOTO (optional)</label>
+
+            {imageUrl ? (
+              <div style={{ position: "relative", display: "inline-block" }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={imageUrl} alt={imageFilename} style={{ maxHeight: 200, maxWidth: "100%", borderRadius: 10, display: "block", border: "1px solid var(--aire-border-ink)" }} />
+                <button
+                  onClick={() => { setImageUrl(""); setImageFilename(""); }}
+                  style={{ position: "absolute", top: 6, right: 6, background: "rgba(9,9,11,0.75)", border: "none", borderRadius: "50%", width: 24, height: 24, cursor: "pointer", color: "#fff", fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center" }}
+                >×</button>
+                <p style={{ fontSize: 9, color: "var(--aire-muted-inv)", marginTop: 5, letterSpacing: "0.04em" }}>{imageFilename}</p>
+              </div>
+            ) : (
+              <div
+                ref={dropzoneRef}
+                onDragOver={e => { e.preventDefault(); e.currentTarget.style.borderColor = "var(--aire-coral)"; }}
+                onDragLeave={e => { e.currentTarget.style.borderColor = "var(--aire-border-ink)"; }}
+                onDrop={async e => {
+                  e.preventDefault();
+                  e.currentTarget.style.borderColor = "var(--aire-border-ink)";
+                  const file = e.dataTransfer.files[0];
+                  if (!file || !file.type.startsWith("image/")) return;
+                  const form = new FormData();
+                  form.append("file", file);
+                  const res = await fetch("/api/media/upload", { method: "POST", body: form });
+                  const data = await res.json() as { url?: string };
+                  if (data.url) { setImageUrl(data.url); setImageFilename(file.name); }
+                }}
+                style={{ border: "1px dashed var(--aire-border-ink)", borderRadius: 10, padding: "20px 14px", display: "flex", flexDirection: "column", alignItems: "center", gap: 10, cursor: "default", transition: "border-color 200ms" }}
+              >
+                <p style={{ fontSize: 11, color: "var(--aire-muted-inv)", letterSpacing: "0.04em" }}>Drop a photo here or</p>
+                <button
+                  onClick={() => setShowDropbox(true)}
+                  style={{ padding: "8px 18px", borderRadius: 8, border: "1px solid var(--aire-coral)", background: "transparent", color: "var(--aire-coral)", fontSize: 11, letterSpacing: "0.06em", cursor: "pointer", fontFamily: "inherit" }}
+                >
+                  Browse Dropbox
+                </button>
+              </div>
+            )}
           </div>
+
+          {showDropbox && (
+            <DropboxPicker
+              onSelect={(url, name) => { setImageUrl(url); setImageFilename(name); setShowDropbox(false); }}
+              onClose={() => setShowDropbox(false)}
+            />
+          )}
 
           <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "16px" }}>
             <button

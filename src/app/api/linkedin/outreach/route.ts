@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
     .join("\n");
 
   const response = await client.messages.create({
-    model: "claude-opus-4-5",
+    model: "claude-opus-4-8",
     max_tokens: 200,
     system: REVE_LINKEDIN_SYSTEM,
     messages: [

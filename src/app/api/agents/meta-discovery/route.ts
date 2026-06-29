@@ -3,7 +3,7 @@ export const dynamic = "force-dynamic";
 // Vercel cron: 0 5 28 * * (11PM CT 27th = 5AM UTC 28th)
 // Reads REGISTRY.md, pulls AgentRun/ActionQueue metrics per loop, classifies green/yellow/red.
 
-import { verifyCronSecret, cronUnauthorized } from "@/lib/cron-auth";
+import { verifyCronSecret, verifyCronOrInternal, cronUnauthorized } from "@/lib/cron-auth";
 import { logError } from "@/lib/error-memory";
 import { invalidateSettingsCache } from "@/lib/settings";
 import { prisma } from "@/lib/prisma";
@@ -175,7 +175,8 @@ export async function POST(request: Request) {
   }
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  if (!verifyCronOrInternal(request)) return cronUnauthorized();
   try {
     return await runMetaDiscovery();
   } catch (err) {

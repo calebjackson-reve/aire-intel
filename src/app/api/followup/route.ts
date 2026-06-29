@@ -1,10 +1,12 @@
 export const dynamic = "force-dynamic";
 import { NextRequest } from "next/server";
-import Anthropic from "@anthropic-ai/sdk";
 import { prisma } from "@/lib/prisma";
 import { REVE_PIPELINE_SYSTEM } from "@/lib/reve-system-prompt";
+import { getLLM } from "@/lib/llm";
 
-function getClient() { return new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY }); }
+// Hybrid router: this haiku-tier call runs on the local model when
+// LOCAL_LLM_ENABLED=1, with automatic cloud fallback.
+function getClient() { return getLLM(); }
 
 export async function POST(request: NextRequest) {
   const { leadId } = await request.json();

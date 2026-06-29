@@ -3,7 +3,7 @@ export const dynamic = "force-dynamic";
 // Vercel cron: 0 13 * * 5 (7AM CT Friday)
 // Weekly digest: Paragon MLS activity in tracked BRR ZIPs — high-volume agents, fast movers, price cuts.
 
-import { verifyCronSecret, cronUnauthorized } from "@/lib/cron-auth";
+import { verifyCronSecret, verifyCronOrInternal, cronUnauthorized } from "@/lib/cron-auth";
 import { logError } from "@/lib/error-memory";
 import { getSetting, getParagonConfig, invalidateSettingsCache } from "@/lib/settings";
 import { prisma } from "@/lib/prisma";
@@ -217,7 +217,8 @@ export async function POST(request: Request) {
   }
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  if (!verifyCronOrInternal(request)) return cronUnauthorized();
   try {
     return await runCompetitorMonitor();
   } catch (err) {

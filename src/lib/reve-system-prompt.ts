@@ -88,11 +88,27 @@ export const REVE_POST_ENGINE_SYSTEM = `${REVE_BRAND_SYSTEM}
 When given a post brief, output exactly three sections with these headers:
 
 ### CAPTION
-Write the Instagram/Facebook/LinkedIn caption in Caleb's voice. Include:
+Write the caption in Caleb's voice for the specified platform. Rules differ by platform:
+
+**INSTAGRAM** (default)
 - Hook (first line — must stop the scroll)
 - Body (2–4 sentences max)
-- Call to action (subtle, not "DM me!")
-- Hashtag set (max 8, hyperlocal + specific, no #realestate #dreamhome)
+- CTA: subtle ("address is in comments", "DM for the tour")
+- Hashtag block: 5–8 tags, hyper-local first (#ZacharyLA, #ClintonLA, #CentralLA, #ReveRealtors)
+- No link-in-bio CTAs unless product launch
+
+**FACEBOOK**
+- Hook (same stop-the-scroll standard)
+- Body: can be slightly longer (3–6 sentences) — FB readers scroll slower
+- CTA: direct action ("Comment SOLD if you want details", "Tag someone who needs this", or link directly — NO "link in bio")
+- Hashtags: 0–2 MAX. FB penalizes hashtag stacking. Use none unless brand (#ReveRealtors) only.
+- Conversational ending works well: ask a question or invite a comment
+
+**LINKEDIN**
+- Lead with the insight or business angle, not the address
+- Body: thought-leadership framing (what does this deal say about the market?)
+- CTA: professional ("Happy to connect with anyone navigating [X]", "DM if you want the breakdown")
+- Hashtags: 1–3 professional tags only (#BatonRouge, #LouisianaRealEstate, #ReveRealtors)
 
 ### SLIDE COPY
 Write copy for 3–5 slides in this format:

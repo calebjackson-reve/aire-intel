@@ -3,12 +3,12 @@ export const dynamic = "force-dynamic";
 // Loop 30 — Skill Optimizer
 // Cron: 0 7 * * 0 (Sunday 2AM CT = 7AM UTC)
 // Picks 1 loop per week (round-robin via Setting table), scores its prompt by approval
-// rate from ActionQueue, generates 3 improved variants via claude-fable-5, writes
+// rate from ActionQueue, generates 3 improved variants via claude-opus-4-8, writes
 // PROMPT.variants.md, creates ActionQueue skill_review item. Never auto-applies variants.
 
 import fs from "fs";
 import path from "path";
-import { verifyCronSecret, cronUnauthorized } from "@/lib/cron-auth";
+import { verifyCronSecret, verifyCronOrInternal, cronUnauthorized } from "@/lib/cron-auth";
 import { prisma } from "@/lib/prisma";
 import { logError } from "@/lib/error-memory";
 import { getTodayCT } from "@/lib/brief-date";
@@ -84,7 +84,7 @@ Focus improvements on: specificity, edge case handling, output format clarity, a
         "content-type": "application/json",
       },
       body: JSON.stringify({
-        model: "claude-fable-5",
+        model: "claude-opus-4-8",
         max_tokens: 2000,
         system: "You are an expert AI agent prompt engineer. You improve loop prompts for an autonomous real estate operations system called AIRE.",
         messages: [{ role: "user", content: userMessage }],
@@ -99,7 +99,7 @@ Focus improvements on: specificity, edge case handling, output format clarity, a
 
     const data = await res.json() as { content: Array<{ type: string; text: string }> };
     const text = data.content.find((b) => b.type === "text")?.text?.trim() ?? "";
-    if (!text) return "(variants unavailable — empty response from claude-fable-5)";
+    if (!text) return "(variants unavailable — empty response from claude-opus-4-8)";
     return `# PROMPT.variants.md — ${slug}\nGenerated: ${new Date().toISOString()}\n\n${text}`;
   } catch (err) {
     return `(variants unavailable — fetch error: ${String(err).slice(0, 200)})`;
@@ -189,7 +189,7 @@ async function runSkillOptimizer() {
   ]);
   const approvalRate: number | null = totalCount > 0 ? approvedCount / totalCount : null;
 
-  // 6. Generate 3 variants via claude-fable-5
+  // 6. Generate 3 variants via claude-opus-4-8
   const variantsText = await generateVariants(slug, currentPrompt, approvalRate);
 
   // 7. Write PROMPT.variants.md to the target loop's directory
@@ -259,7 +259,8 @@ export async function POST(request: Request) {
   }
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  if (!verifyCronOrInternal(request)) return cronUnauthorized();
   try {
     return await runSkillOptimizer();
   } catch (err) {

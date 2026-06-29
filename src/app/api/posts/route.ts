@@ -4,11 +4,13 @@ import Anthropic from "@anthropic-ai/sdk";
 import { prisma } from "@/lib/prisma";
 import { REVE_POST_ENGINE_SYSTEM } from "@/lib/reve-system-prompt";
 import { buildContentAudit } from "@/lib/meta-insights";
+import { QualityFlag } from "@/lib/content-quality";
+import { generateUntilPasses } from "@/lib/content-gate";
+import { getSetting } from "@/lib/settings";
+import { getLearnedStyleGuidance, getLocalHashtagGuidance } from "@/lib/content-preferences";
 
 function getClient() { return new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY }); }
 
-// Build a one-paragraph performance brief from Meta insights so Claude
-// can tailor the new post to what's actually been working for this audience.
 async function buildPerformanceBrief(): Promise<string> {
   const audit = await buildContentAudit();
   if (audit.totalPosts < 5) return "";
@@ -30,85 +32,110 @@ async function buildPerformanceBrief(): Promise<string> {
   return lines.join("\n");
 }
 
+function buildEscalation(score: number, flags: QualityFlag[]): string {
+  const issues = flags.map(f => `- ${f.detail}`).join("\n");
+  return `\n\n---\nPrevious attempt scored ${score}/100. Fix these issues specifically — do not restate this preamble, just output corrected sections:\n${issues}`;
+}
+
 export async function POST(request: NextRequest) {
   const body = await request.json();
   const { postType, address, price, rawNotes, platform, leadId } = body;
 
-  const performanceBrief = await buildPerformanceBrief();
+  const [performanceBrief, promptDeltaRaw, versionRaw, learnedGuidance] = await Promise.all([
+    buildPerformanceBrief(),
+    getSetting("content.promptEvolution.v" + await getSetting("content.promptVersion").then(v => v ?? "0")).catch(() => null),
+    getSetting("content.promptVersion").catch(() => null),
+    getLearnedStyleGuidance(),
+  ]);
 
-  const encoder = new TextEncoder();
+  const promptVersion = parseInt(versionRaw ?? "0");
+  let systemText = promptDeltaRaw
+    ? `${REVE_POST_ENGINE_SYSTEM}\n\n## EVOLVED PREFERENCES (learned from your feedback — v${promptVersion})\n${promptDeltaRaw}`
+    : REVE_POST_ENGINE_SYSTEM;
+  if (learnedGuidance) {
+    systemText = `${systemText}\n\n## ${learnedGuidance}`;
+  }
+  systemText = `${systemText}\n\n## ${getLocalHashtagGuidance(platform || "instagram")}`;
 
-  const stream = new ReadableStream({
-    async start(controller) {
-      let isClosed = false;
-      try {
-        const anthropicStream = getClient().messages.stream({
-          model: "claude-sonnet-4-5",
-          max_tokens: 2048,
-          system: [
-            {
-              type: "text",
-              text: REVE_POST_ENGINE_SYSTEM,
-              cache_control: { type: "ephemeral" },
-            },
-          ],
-          messages: [
-            {
-              role: "user",
-              content: `Generate a post for:
+  const baseUserContent = `Generate a post for:
 Type: ${postType}
 Address: ${address || "not specified"}
 Price: ${price ? `$${price.toLocaleString()}` : "not specified"}
 Platform: ${platform || "instagram"}
 Raw notes: ${rawNotes}
 
-${performanceBrief ? performanceBrief + "\n\n" : ""}Output the three sections: CAPTION, SLIDE COPY, MOTION SPEC.`,
-            },
-          ],
-        });
+${performanceBrief ? performanceBrief + "\n\n" : ""}Output the three sections: CAPTION, SLIDE COPY, MOTION SPEC.`;
 
-        let fullText = "";
+  const system: Anthropic.Messages.TextBlockParam[] = [
+    { type: "text", text: systemText, cache_control: { type: "ephemeral" } },
+  ];
 
-        for await (const chunk of anthropicStream) {
-          if (
-            chunk.type === "content_block_delta" &&
-            chunk.delta.type === "text_delta"
-          ) {
-            fullText += chunk.delta.text;
-            if (!isClosed) {
-              try {
-                controller.enqueue(encoder.encode(chunk.delta.text));
-              } catch {
-                isClosed = true;
-              }
-            }
-          }
-        }
+  // Run gate: up to 3 non-streaming attempts server-side; stream winner to client
+  const gateResult = await generateUntilPasses(
+    async (attempt, lastScore, lastFlags) => {
+      const userContent = attempt === 1 || !lastScore || !lastFlags
+        ? baseUserContent
+        : baseUserContent + buildEscalation(lastScore, lastFlags);
 
-        // Save to DB after stream completes
-        const sections = parsePostSections(fullText);
-        await prisma.generatedPost.create({
-          data: {
-            leadId: leadId || null,
-            postType,
-            address,
-            price: price ? parseFloat(price) : null,
-            rawNotes,
-            platform: platform || "instagram",
-            caption: sections.caption,
-            slideCopy: sections.slideCopy,
-            motionSpec: sections.motionSpec,
-          },
-        });
+      const res = await getClient().messages.create({
+        model: "claude-sonnet-4-6",
+        max_tokens: 2048,
+        system,
+        messages: [{ role: "user", content: userContent }],
+      });
+      return res.content.find((b): b is Anthropic.Messages.TextBlock => b.type === "text")?.text ?? "";
+    },
+    { outputType: "post", platform: platform || "instagram" }
+  );
 
-        isClosed = true;
-        controller.close();
-      } catch (err) {
-        if (!isClosed) {
-          isClosed = true;
-          controller.error(err);
-        }
+  const encoder = new TextEncoder();
+  const tempId = `gp_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+
+  const stream = new ReadableStream({
+    start(controller) {
+      // Stream the winner's text in chunks (smooth UX, same as before)
+      const text = gateResult.content;
+      const chunkSize = 48;
+      for (let i = 0; i < text.length; i += chunkSize) {
+        controller.enqueue(encoder.encode(text.slice(i, i + chunkSize)));
       }
+
+      // Send __meta with gate result info
+      const attemptLabel = gateResult.passed
+        ? gateResult.attempts === 1 ? "Passed on first attempt" : `Passed on attempt ${gateResult.attempts}`
+        : `⚠ Best of ${gateResult.attempts} — ${gateResult.quality.score}/100`;
+
+      const metaPayload = JSON.stringify({
+        __meta: true,
+        postId: tempId,
+        quality: gateResult.quality,
+        attempts: gateResult.attempts,
+        passed: gateResult.passed,
+        attemptLabel,
+      });
+      controller.enqueue(encoder.encode(`\n\n${metaPayload}`));
+      controller.close();
+
+      // Background DB save
+      const sections = parsePostSections(gateResult.content);
+      prisma.generatedPost.create({
+        data: {
+          id: tempId,
+          leadId: leadId || null,
+          postType,
+          address,
+          price: price ? parseFloat(price) : null,
+          rawNotes,
+          platform: platform || "instagram",
+          caption: sections.caption,
+          slideCopy: sections.slideCopy,
+          motionSpec: sections.motionSpec,
+          qualityScore: gateResult.quality.score,
+          qualityFlags: JSON.stringify(gateResult.quality.flags),
+          promptVersion,
+          attempts: gateResult.attempts,
+        },
+      }).catch(() => { /* best-effort */ });
     },
   });
 
@@ -123,11 +150,10 @@ ${performanceBrief ? performanceBrief + "\n\n" : ""}Output the three sections: C
 
 function parsePostSections(text: string) {
   const captionMatch = text.match(/###\s*CAPTION\s*([\s\S]*?)(?=###\s*SLIDE|$)/i);
-  const slideMatch = text.match(/###\s*SLIDE COPY\s*([\s\S]*?)(?=###\s*MOTION|$)/i);
-  const motionMatch = text.match(/###\s*MOTION SPEC\s*([\s\S]*?)$/i);
-
+  const slideMatch   = text.match(/###\s*SLIDE COPY\s*([\s\S]*?)(?=###\s*MOTION|$)/i);
+  const motionMatch  = text.match(/###\s*MOTION SPEC\s*([\s\S]*?)$/i);
   return {
-    caption: captionMatch?.[1]?.trim() || "",
+    caption:   captionMatch?.[1]?.trim() || "",
     slideCopy: slideMatch?.[1]?.trim() || "",
     motionSpec: motionMatch?.[1]?.trim() || "",
   };

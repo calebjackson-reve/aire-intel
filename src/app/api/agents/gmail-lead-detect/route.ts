@@ -4,7 +4,7 @@ export const dynamic = "force-dynamic";
 // Cron: */30 * * * * — Scans unread Gmail messages every 30 minutes,
 // classifies them as real estate inquiries, creates new leads or routes to handleInboundReply.
 
-import { verifyCronSecret, cronUnauthorized } from "@/lib/cron-auth";
+import { verifyCronSecret, verifyCronOrInternal, cronUnauthorized } from "@/lib/cron-auth";
 import { startRun, finishRun, failRun } from "@/lib/agent-run";
 import { prisma } from "@/lib/prisma";
 import { getValidGoogleToken } from "@/lib/google";
@@ -21,7 +21,8 @@ export async function POST(request: Request) {
   return runGmailLeadDetect();
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  if (!verifyCronOrInternal(request)) return cronUnauthorized();
   return runGmailLeadDetect();
 }
 

@@ -3,7 +3,7 @@ export const dynamic = "force-dynamic";
 // Vercel cron: 0 15 15 * * (9AM CT on the 15th of each month)
 // Analyzes ActionQueue history by action type — reports Phase B graduation candidates. Never flips requiresApproval.
 
-import { verifyCronSecret, cronUnauthorized } from "@/lib/cron-auth";
+import { verifyCronSecret, verifyCronOrInternal, cronUnauthorized } from "@/lib/cron-auth";
 import { logError } from "@/lib/error-memory";
 import { invalidateSettingsCache } from "@/lib/settings";
 import { prisma } from "@/lib/prisma";
@@ -142,7 +142,8 @@ export async function POST(request: Request) {
   }
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  if (!verifyCronOrInternal(request)) return cronUnauthorized();
   try {
     return await runPhaseBEval();
   } catch (err) {

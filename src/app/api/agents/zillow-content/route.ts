@@ -4,7 +4,7 @@ export const dynamic = "force-dynamic";
 // Cron: 0 9 * * 2,5 — Tuesday and Friday, fetches viral Zillow listings and
 // queues the top 2 unused listings as post_content ActionQueue items.
 
-import { verifyCronSecret, cronUnauthorized } from "@/lib/cron-auth";
+import { verifyCronSecret, verifyCronOrInternal, cronUnauthorized } from "@/lib/cron-auth";
 import { startRun, finishRun, failRun } from "@/lib/agent-run";
 import { prisma } from "@/lib/prisma";
 import { fetchViralListings, viralScore } from "@/lib/zillow";
@@ -19,7 +19,8 @@ export async function POST(request: Request) {
   return runZillowContent();
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  if (!verifyCronOrInternal(request)) return cronUnauthorized();
   return runZillowContent();
 }
 

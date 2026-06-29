@@ -3,7 +3,7 @@ export const dynamic = "force-dynamic";
 // Vercel cron: 0 13 * * 1 (7AM CT Monday)
 // Compares leads, outbound contacts, and closings against Setting targets; writes pacing Notification.
 
-import { verifyCronSecret, cronUnauthorized } from "@/lib/cron-auth";
+import { verifyCronSecret, verifyCronOrInternal, cronUnauthorized } from "@/lib/cron-auth";
 import { logError } from "@/lib/error-memory";
 import { getSetting, invalidateSettingsCache } from "@/lib/settings";
 import { prisma } from "@/lib/prisma";
@@ -105,7 +105,8 @@ export async function POST(request: Request) {
   }
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  if (!verifyCronOrInternal(request)) return cronUnauthorized();
   try {
     return await runGoalPacing();
   } catch (err) {

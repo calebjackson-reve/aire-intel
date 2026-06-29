@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   Sunrise, GitBranch, Users, PenTool, Settings, Map,
+  FileText, MessageCircle, UserCheck, Target, Search, Bot, BookOpen, Radar, Globe, Zap,
 } from "lucide-react";
 
 interface NavItem {
@@ -14,16 +15,47 @@ interface NavItem {
   badgeKey?: "overdue" | "queue";
 }
 
-// Five surfaces. Everything else is reachable via AIRE bar or secondary links.
+interface NavSection {
+  label?: string;
+  items: NavItem[];
+}
+
 const ICON = 17;
 
-const PRIMARY: NavItem[] = [
-  { href: "/today", label: "Today", icon: <Sunrise size={ICON} />, badgeKey: "queue" },
-  { href: "/pipeline", label: "Pipeline", icon: <GitBranch size={ICON} />, badgeKey: "overdue" },
-  { href: "/contacts", label: "Contacts", icon: <Users size={ICON} /> },
-  { href: "/market", label: "Market", icon: <Map size={ICON} /> },
-  { href: "/create-post", label: "Content", icon: <PenTool size={ICON} /> },
-  { href: "/settings", label: "Settings", icon: <Settings size={ICON} /> },
+const SECTIONS: NavSection[] = [
+  {
+    items: [
+      { href: "/today", label: "Today", icon: <Sunrise size={ICON} />, badgeKey: "queue" },
+    ],
+  },
+  {
+    label: "Sales",
+    items: [
+      { href: "/pipeline", label: "Pipeline", icon: <GitBranch size={ICON} />, badgeKey: "overdue" },
+      { href: "/contacts", label: "Contacts", icon: <Users size={ICON} /> },
+      { href: "/people", label: "People", icon: <Globe size={ICON} /> },
+      { href: "/buyers", label: "Buyers", icon: <BookOpen size={ICON} /> },
+      { href: "/follow-up", label: "Follow-Up", icon: <UserCheck size={ICON} /> },
+      { href: "/touches", label: "Touch Tracker", icon: <Radar size={ICON} />, badgeKey: "overdue" },
+    ],
+  },
+  {
+    label: "Content",
+    items: [
+      { href: "/studio", label: "Video Brain", icon: <Zap size={ICON} /> },
+      { href: "/create-post", label: "Studio", icon: <PenTool size={ICON} /> },
+      { href: "/social-drafts", label: "Drafts", icon: <FileText size={ICON} /> },
+      { href: "/messenger-outreach", label: "Outreach", icon: <MessageCircle size={ICON} /> },
+      { href: "/chat", label: "AIRE Chat", icon: <Bot size={ICON} /> },
+    ],
+  },
+  {
+    label: "Intel",
+    items: [
+      { href: "/market", label: "Market", icon: <Map size={ICON} /> },
+      { href: "/smart-plans", label: "Smart Plans", icon: <Target size={ICON} /> },
+    ],
+  },
 ];
 
 export default function Sidebar() {
@@ -76,17 +108,24 @@ export default function Sidebar() {
       </Link>
 
       <div className="navscroll">
-        {PRIMARY.map(item => (
-          <Link
-            key={item.href}
-            href={item.href}
-            className={`ni${isActive(item.href) ? " on" : ""}`}
-            aria-label={item.label}
-          >
-            {item.icon}
-            <span className="ni-label">{item.label}</span>
-            {badge(item)}
-          </Link>
+        {SECTIONS.map((section, si) => (
+          <div key={si}>
+            {section.label && (
+              <div className="nsec">{section.label}</div>
+            )}
+            {section.items.map(item => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`ni${isActive(item.href) ? " on" : ""}`}
+                aria-label={item.label}
+              >
+                {item.icon}
+                <span className="ni-label">{item.label}</span>
+                {badge(item)}
+              </Link>
+            ))}
+          </div>
         ))}
       </div>
 

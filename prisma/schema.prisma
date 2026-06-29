@@ -1,6 +1,5 @@
 generator client {
   provider        = "prisma-client-js"
-  previewFeatures = ["driverAdapters"]
 }
 
 datasource db {
@@ -43,6 +42,10 @@ model Lead {
   nextActionDate  DateTime?
   nextActionNote  String?
   assignedTo      String?
+  // Touch cadence — drives the unified Touch Tracker
+  preferredPlatform String?  // imessage | facebook | instagram | snapchat | linkedin — channel this person actually responds on
+  touchCadenceDays  Int?     // desired days between touches; null = use tier default
+  doNotContact      Boolean  @default(false)
   // Contract dates — populated when stage transitions to under_contract.
   // contractDate = date the offer was accepted / contract executed.
   // closingDate  = scheduled closing date. Used to auto-generate milestone tasks
@@ -58,6 +61,7 @@ model Lead {
   linkedinUrl     String?
   tiktokHandle    String?
   twitterHandle   String?
+  photoUrl        String?   // cached profile picture URL
   // Meta
   notes           String?
   createdAt       DateTime  @default(now())
@@ -73,6 +77,8 @@ model Lead {
   messageDrafts    MessageDraft[]
   propertyIntel    PropertyIntel?
   actionQueue      ActionQueue[]
+  memoryIndex      MemoryIndex[]
+  iMessageThreads  IMessageThread[]
 }
 
 // Homeowner / property attributes imported from a PropStream CSV export (the only
@@ -143,10 +149,15 @@ model ContactLog {
   id        String   @id @default(cuid())
   leadId    String
   lead      Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
-  method    String   // text | call | email | showing | meeting | note | ai_message
+  method    String   // text | call | email | showing | meeting | note | ai_message | dm
+  platform  String?  // imessage | facebook | instagram | snapchat | linkedin | email | phone | inperson
   note      String?
   direction String   @default("outbound") // inbound | outbound
+  externalId String? @unique // dedupe key for auto-ingested messages (e.g. imessage GUID)
+  touchedAt DateTime @default(now()) // when the touch actually happened (differs from createdAt on backfills)
   createdAt DateTime @default(now())
+
+  @@index([leadId, platform])
 }
 
 model Task {
@@ -188,19 +199,26 @@ model SmartPlanEnrollment {
 }
 
 model GeneratedPost {
-  id         String   @id @default(cuid())
-  leadId     String?
-  lead       Lead?    @relation(fields: [leadId], references: [id], onDelete: SetNull)
-  postType   String
-  address    String?
-  price      Float?
-  rawNotes   String?
-  caption    String?
-  slideCopy  String?
-  motionSpec String?
-  platform   String   @default("instagram")
-  approved   Boolean  @default(false)
-  createdAt  DateTime @default(now())
+  id            String   @id @default(cuid())
+  leadId        String?
+  lead          Lead?    @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  postType      String
+  address       String?
+  price         Float?
+  rawNotes      String?
+  caption       String?
+  slideCopy     String?
+  motionSpec    String?
+  platform      String   @default("instagram")
+  approved      Boolean  @default(false)
+  // Quality + learning
+  qualityScore  Float?
+  qualityFlags  String?  // JSON
+  userFeedback  String?  // approved | rejected | edited
+  feedbackNote  String?
+  promptVersion Int?     // which prompt evolution version generated this
+  attempts      Int?     @default(1)  // gate retry count (1 = passed first try)
+  createdAt     DateTime @default(now())
 }
 
 model DailyBrief {
@@ -357,16 +375,43 @@ model Setting {
 }
 
 model ScheduledPost {
+  id             String   @id @default(cuid())
+  platform       String   // facebook | instagram | both
+  caption        String
+  slidesCopy     String?  // JSON array of slide objects
+  motionSpec     String?
+  imageUrl       String?
+  scheduledFor   DateTime?
+  publishedAt    DateTime?
+  status         String   @default("draft") // draft | scheduled | published | failed
+  postId         String?  // platform post ID after publish
+  leadId         String?
+  postType       String?  // just_listed | just_sold | market_update | etc
+  // Quality + learning
+  qualityScore   Float?   // 0-100 scored by quality gate
+  qualityFlags   String?  // JSON array of flag strings
+  userFeedback   String?  // approved | rejected | edited
+  feedbackNote   String?  // optional note on why
+  // Performance (filled when Meta reports back)
+  reach          Int?
+  impressions    Int?
+  engagement     Int?
+  engagementRate Float?
+  createdAt      DateTime @default(now())
+}
+
+// Learned content preferences — extracted from approved posts over time
+model ContentPreference {
   id           String   @id @default(cuid())
-  platform     String   // facebook | instagram | both
-  caption      String
-  imageUrl     String?
-  scheduledFor DateTime?
-  publishedAt  DateTime?
-  status       String   @default("draft") // draft | scheduled | published | failed
-  postId       String?  // platform post ID after publish
-  leadId       String?
+  patternType  String   // hook_style | cta_format | hashtag | tone | structure
+  value        String   // the actual pattern or phrase
+  approvals    Int      @default(0)
+  rejections   Int      @default(0)
+  approvalRate Float    @default(0)
+  lastSeen     DateTime @default(now())
   createdAt    DateTime @default(now())
+
+  @@unique([patternType, value])
 }
 
 model Deal {
@@ -492,9 +537,12 @@ model ContentProject {
   externalPostIds Json?    // { instagram: "...", facebook: "..." }
   trendSignalId   String?
   trendSignal     TrendSignal? @relation(fields: [trendSignalId], references: [id], onDelete: SetNull)
+  referenceRecipeId String?
+  referenceRecipe   VideoRecipe? @relation(fields: [referenceRecipeId], references: [id], onDelete: SetNull)
   media           MediaAsset[]
   renderJobs      RenderJob[]
   performance     ContentPerformance[]
+  importedPosts   ImportedPost[]
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 }
@@ -589,4 +637,268 @@ model ClientRef {
   tags              String?
   syncedAt          DateTime @default(now())
   projects          ContentProject[]
+}
+
+/**
+ * Zillow market intelligence cache.
+ *
+ * Scraped from Zillow's internal search API for private market research by a
+ * licensed REALTOR®. NOT for republication. Cached 24h to minimize requests.
+ * Covers Baton Rouge, Zachary, St. Francisville markets.
+ *
+ * status: "for_sale" | "recently_sold" | "for_rent"
+ * priceHistory: JSON array of { date, price, event } from Zillow
+ */
+model ZillowListing {
+  id            String   @id @default(cuid())
+  zpid          String   @unique          // Zillow property ID
+  address       String
+  city          String
+  state         String   @default("LA")
+  zip           String
+  price         Float?
+  beds          Int?
+  baths         Float?
+  sqft          Int?
+  lotSqft       Int?
+  yearBuilt     Int?
+  propertyType  String?                   // SingleFamily | Condo | Townhouse | Land
+  daysOnMarket  Int?
+  zestimate     Float?
+  rentZestimate Float?
+  status        String                    // for_sale | recently_sold | for_rent
+  soldPrice     Float?                    // populated for recently_sold
+  soldDate      DateTime?
+  listingUrl    String
+  photoUrl      String?
+  priceHistory  Json?                     // [{ date, price, event }]
+  hoaFee        Float?
+  taxAnnual     Float?
+  description   String?
+  scrapedAt     DateTime @default(now())
+  source        String   @default("zillow_internal")
+
+  @@index([city, status])
+  @@index([status, scrapedAt])
+  @@index([zip, status])
+}
+
+/// Persistent conversation threads for AIRE Jarvis chat
+model ChatThread {
+  id           String        @id @default(cuid())
+  title        String?
+  messageCount Int           @default(0)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  messages     ChatMessage[]
+}
+
+/// Materialized search index for Jarvis memory — rebuilt by background cron.
+/// Covers Lead, ContactLog, and ChatMessage rows in a single FTS-ready table.
+/// The search_vector tsvector column and GIN index are added via manual SQL after migration
+/// (see prisma/migrations/manual_gin_index.sql).
+model MemoryIndex {
+  id         String   @id @default(cuid())
+  /// Source table identifier
+  sourceType String   // lead | contact_log | chat_message
+  sourceId   String
+  /// Lead this memory is about (nullable for chat messages without lead context)
+  leadId     String?
+  lead       Lead?    @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  /// The raw text excerpt displayed in results
+  excerpt    String
+  /// Full concatenated text used to build the tsvector — stored for re-indexing
+  rawText    String
+  /// Timestamp of the original source row (used for recency sorting)
+  sourceAt   DateTime
+  /// When this index row was last rebuilt
+  indexedAt  DateTime @default(now())
+
+  @@unique([sourceType, sourceId])
+  @@index([leadId])
+  @@index([sourceAt])
+}
+
+/// Raw imported contact from Facebook friends export, Instagram export, or vCard.
+/// Staging table — matched records get merged into Lead; unmatched remain here
+/// so they're visible on the /people page and can be merged later.
+model SocialPerson {
+  id              String   @id @default(cuid())
+  source          String   // facebook | instagram | contacts
+  externalId      String?  // FB friend URL, IG handle, vCard UID
+  name            String
+  firstName       String?
+  lastName        String?
+  email           String?
+  phone           String?
+  instagramHandle String?
+  facebookUrl     String?
+  facebookName    String?
+  avatarUrl       String?
+  matchedLeadId   String?  // set once confirmed-matched to a Lead
+  matchScore      Float?   // 0-1, from the dedup run that found this match
+  matchReason     String?
+  importedAt      DateTime @default(now())
+
+  @@unique([source, externalId])
+  @@index([matchedLeadId])
+  @@index([name])
+}
+
+/// Historical post imported from a Meta data export (Instagram or Facebook).
+model SocialExport {
+  id           String             @id @default(cuid())
+  platform     String             // instagram | facebook
+  exportedAt   DateTime
+  importedAt   DateTime           @default(now())
+  periodStart  DateTime?
+  periodEnd    DateTime?
+  status       String             @default("pending") // pending | processing | complete | failed
+  postCount    Int                @default(0)
+  reelCount    Int                @default(0)
+  insightCount Int                @default(0)
+  posts        ImportedPost[]
+  snapshots    AudienceSnapshot[]
+}
+
+model ImportedPost {
+  id               String          @id @default(cuid())
+  exportId         String
+  export           SocialExport    @relation(fields: [exportId], references: [id])
+  platform         String
+  caption          String?
+  publishedAt      DateTime
+  postType         String?
+  isReel           Boolean         @default(false)
+  imageCount       Int             @default(0)
+  hashtags         Json?
+  hashtagCount     Int             @default(0)
+  taggedUsers      Json?
+  hasLocation      Boolean         @default(false)
+  reach            Int?
+  impressions      Int?
+  likes            Int?
+  comments         Int?
+  shares           Int?
+  saves            Int?
+  profileVisits    Int?
+  follows          Int?
+  engagementRate   Float?
+  hookStyle        String?
+  captionLength    Int?
+  ctaType          String?
+  sentimentScore   Float?
+  contentProjectId String?
+  contentProject   ContentProject? @relation(fields: [contentProjectId], references: [id])
+  createdAt        DateTime        @default(now())
+
+  @@unique([platform, publishedAt, caption])
+  @@index([platform, postType])
+  @@index([publishedAt])
+}
+
+model AudienceSnapshot {
+  id                String       @id @default(cuid())
+  exportId          String
+  export            SocialExport @relation(fields: [exportId], references: [id])
+  snapshotDate      DateTime
+  platform          String
+  totalFollowers    Int?
+  followerDelta     Float?
+  accountsReached   Int?
+  reachDelta        Float?
+  nonFollowerPct    Float?
+  totalInteractions Int?
+  interactionDelta  Float?
+  reelsInteractions Int?
+  postInteractions  Int?
+  storyInteractions Int?
+  topCities         Json?
+  ageBreakdown      Json?
+  genderBreakdown   Json?
+  peakDay           String?
+  peakHour          Int?
+  createdAt         DateTime     @default(now())
+}
+
+model PredictionAccuracy {
+  id                  String    @id @default(cuid())
+  contentProjectId    String?
+  postType            String?
+  isReel              Boolean   @default(false)
+  platform            String
+  predictedReach      Int
+  actualReach         Int?
+  predictedEngagement Int
+  actualEngagement    Int?
+  reachDelta          Float?
+  engagementDelta     Float?
+  signalsUsed         Json?
+  fetchedAt           DateTime?
+  publishedAt         DateTime
+  createdAt           DateTime  @default(now())
+
+  @@index([platform, postType])
+}
+
+/// Torn-down video analysis recipe — powers the self-improving Video Brain.
+model VideoRecipe {
+  id           String   @id @default(cuid())
+  url          String?                          // original URL (Instagram/TikTok/direct)
+  sourceType   String                           // instagram | tiktok | upload | study | queued
+  recipe       Json                             // EditRecipe JSON from Python analyzer
+  thumbnailUrl String?
+  notes        String?
+  hookPatterns Json?                            // [{ archetype, formula, example }]
+  approvalRate Float?                           // set by weekly agent from top-performing reels
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  projects     ContentProject[]
+}
+
+/// Individual messages within a ChatThread
+model ChatMessage {
+  id            String     @id @default(cuid())
+  threadId      String
+  role          String     // user | assistant
+  content       String
+  toolCallsJson String?    // serialized tool use blocks
+  createdAt     DateTime   @default(now())
+  thread        ChatThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+
+  @@index([threadId, createdAt])
+}
+
+// ── iMessage Integration ──────────────────────────────────────────────────────
+
+/// One thread per phone number — synced from ~/Library/Messages/chat.db via bridge
+model IMessageThread {
+  id          String            @id @default(cuid())
+  phone       String            @unique  // E.164 normalized e.g. +12255551234
+  displayName String?           // from Contacts app or first message sender
+  leadId      String?           // matched AIRE lead (null if not yet matched)
+  lead        Lead?             @relation(fields: [leadId], references: [id])
+  lastBody    String?           // snippet of the most recent message
+  lastAt      DateTime?         // timestamp of most recent message
+  needsReply  Boolean           @default(false) // last message was inbound, no outbound reply since
+  messages    IMessageMessage[]
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  @@index([lastAt])
+  @@index([needsReply])
+}
+
+/// Individual iMessages within a thread
+model IMessageMessage {
+  id        String         @id @default(cuid())
+  threadId  String
+  thread    IMessageThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  guid      String         @unique  // Apple's GUID — dedup key
+  body      String
+  direction String         // inbound | outbound
+  sentAt    DateTime
+  createdAt DateTime       @default(now())
+
+  @@index([threadId, sentAt])
 }

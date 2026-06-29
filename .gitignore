@@ -32,6 +32,11 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+# extra secret-shaped files NOT covered by .env* (rescue-safety, 2026-06-29)
+caleb.env*
+*.env.txt
+*.credentials.json
+*.key
 
 # local database (contains real contact PII — never commit)
 *.db

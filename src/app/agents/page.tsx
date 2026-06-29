@@ -91,7 +91,7 @@ export default function AgentsPage() {
   const agents = Object.keys(AGENT_LABELS).filter((a) => a !== "new_lead_intake");
 
   return (
-    <main style={{ paddingLeft: "80px", paddingRight: "24px", paddingTop: "40px", paddingBottom: "60px", maxWidth: "900px" }}>
+    <main style={{ paddingLeft: "24px", paddingRight: "24px", paddingTop: "40px", paddingBottom: "60px", maxWidth: "900px" }}>
       <p style={{ margin: 0, fontSize: "11px", letterSpacing: "0.15em", color: "#555" }}>AIRÉ</p>
       <h1 style={{ margin: "6px 0 24px", fontWeight: 300, fontSize: "26px", color: "#fff" }}>
         Agent Observability

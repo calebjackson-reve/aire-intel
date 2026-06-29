@@ -301,7 +301,7 @@ export default function BriefPage() {
   return (
     <main
       style={{
-        paddingLeft: "80px",
+        paddingLeft: "24px",
         paddingRight: "24px",
         paddingTop: "40px",
         paddingBottom: "60px",

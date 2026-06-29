@@ -2,6 +2,7 @@
 
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
+import PostPerformancePrediction from "@/components/PostPerformancePrediction";
 
 const POST_TYPES = [
   { value: "just_listed", label: "Just Listed" },
@@ -67,6 +68,9 @@ function CreatePost() {
   const [streaming, setStreaming] = useState(false);
   const [rawOutput, setRawOutput] = useState("");
   const [done, setDone] = useState(false);
+  const [postId, setPostId] = useState<string | null>(null);
+  const [quality, setQuality] = useState<{ score: number; grade: string; flags: Array<{severity:string;rule:string;detail:string}>; passed: boolean } | null>(null);
+  const [feedbackSent, setFeedbackSent] = useState<"approved"|"rejected"|null>(null);
 
   // Pre-load market context when arriving via "Weekly Market Post" action card
   useEffect(() => {
@@ -106,6 +110,9 @@ function CreatePost() {
     setStreaming(true);
     setRawOutput("");
     setDone(false);
+    setPostId(null);
+    setQuality(null);
+    setFeedbackSent(null);
 
     const res = await fetch("/api/posts", {
       method: "POST",
@@ -117,14 +124,41 @@ function CreatePost() {
     const decoder = new TextDecoder();
     if (!reader) return;
 
+    let buffer = "";
     while (true) {
       const { done: streamDone, value } = await reader.read();
       if (streamDone) break;
-      setRawOutput((prev) => prev + decoder.decode(value));
+      const chunk = decoder.decode(value);
+      buffer += chunk;
+      // Check if trailing meta JSON arrived
+      const metaIdx = buffer.lastIndexOf('\n\n{"__meta":true');
+      if (metaIdx !== -1) {
+        try {
+          const metaStr = buffer.slice(metaIdx + 2);
+          const meta = JSON.parse(metaStr);
+          setPostId(meta.postId ?? null);
+          setQuality(meta.quality ?? null);
+          setRawOutput(buffer.slice(0, metaIdx));
+        } catch {
+          setRawOutput(buffer);
+        }
+      } else {
+        setRawOutput(buffer);
+      }
     }
 
     setStreaming(false);
     setDone(true);
+  }
+
+  async function sendFeedback(fb: "approved" | "rejected") {
+    if (!postId) return;
+    setFeedbackSent(fb);
+    await fetch(`/api/posts/${postId}/feedback`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ feedback: fb }),
+    });
   }
 
   return (
@@ -250,6 +284,56 @@ function CreatePost() {
         <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
           {(streaming || done) && (
             <>
+              {/* Quality badge + feedback row */}
+              {done && quality && (
+                <div style={{
+                  display: "flex", alignItems: "center", gap: 10, padding: "10px 16px",
+                  borderRadius: 12, background: "var(--aire-card)",
+                  border: "1px solid var(--aire-border)",
+                }}>
+                  {/* Grade badge */}
+                  <div style={{
+                    width: 36, height: 36, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center",
+                    fontWeight: 800, fontSize: 16, fontFamily: "var(--font-display-app)",
+                    background: quality.grade === "A" ? "rgba(74,222,128,0.15)" : quality.grade === "B" ? "rgba(134,239,172,0.15)" : "rgba(238,129,114,0.15)",
+                    color: quality.grade === "A" ? "#16a34a" : quality.grade === "B" ? "#15803d" : "#EE8172",
+                    border: `1px solid ${quality.grade === "A" ? "rgba(74,222,128,0.3)" : quality.grade === "B" ? "rgba(134,239,172,0.3)" : "rgba(238,129,114,0.3)"}`,
+                  }}>{quality.grade}</div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: "var(--aire-text)" }}>
+                      Quality Score: {quality.score}/100
+                    </div>
+                    {quality.flags.length > 0 ? (
+                      <div style={{ fontSize: 10.5, color: quality.flags.some(f => f.severity === "error") ? "#EE8172" : "var(--aire-muted)", marginTop: 2 }}>
+                        {quality.flags.map(f => f.detail).slice(0, 2).join(" · ")}
+                        {quality.flags.length > 2 && ` +${quality.flags.length - 2} more`}
+                      </div>
+                    ) : (
+                      <div style={{ fontSize: 10.5, color: "#4ADE80", marginTop: 2 }}>All brand rules passed ✓</div>
+                    )}
+                  </div>
+                  {/* Feedback buttons */}
+                  {!feedbackSent ? (
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <button onClick={() => sendFeedback("approved")} style={{
+                        padding: "6px 14px", borderRadius: 8, border: "1px solid rgba(74,222,128,0.4)",
+                        background: "rgba(74,222,128,0.08)", color: "#16a34a", fontSize: 11, fontWeight: 700,
+                        cursor: "pointer", letterSpacing: "0.06em",
+                      }}>✓ USE IT</button>
+                      <button onClick={() => sendFeedback("rejected")} style={{
+                        padding: "6px 14px", borderRadius: 8, border: "1px solid rgba(238,129,114,0.4)",
+                        background: "rgba(238,129,114,0.08)", color: "#EE8172", fontSize: 11, fontWeight: 700,
+                        cursor: "pointer", letterSpacing: "0.06em",
+                      }}>✗ REDO</button>
+                    </div>
+                  ) : (
+                    <div style={{ fontSize: 11, fontWeight: 700, color: feedbackSent === "approved" ? "#16a34a" : "#EE8172", letterSpacing: "0.06em" }}>
+                      {feedbackSent === "approved" ? "✓ Logged — engine learns from this" : "✗ Noted — engine will adjust"}
+                    </div>
+                  )}
+                </div>
+              )}
+
               {sections.caption && (
                 <OutputSection title="CAPTION" content={sections.caption} />
               )}
@@ -258,6 +342,14 @@ function CreatePost() {
               )}
               {sections.motionSpec && (
                 <OutputSection title="MOTION SPEC" content={sections.motionSpec} />
+              )}
+              {done && sections.caption && (
+                <PostPerformancePrediction
+                  postType={postType}
+                  isReel={postType === "reel"}
+                  caption={sections.caption}
+                  platform={platform}
+                />
               )}
               {streaming && !sections.caption && (
                 <div className="card-output" style={{ padding: "26px" }}>

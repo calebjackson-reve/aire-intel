@@ -604,6 +604,17 @@ export default function Settings() {
           connected={metaConnected}
         />
 
+        {/* Always show reconnect button — tokens expire every 60 days */}
+        <div style={{ marginBottom: "16px", padding: "14px 16px", background: "rgba(238,129,114,0.06)", border: "1px solid rgba(238,129,114,0.25)", borderRadius: "12px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" as const }}>
+          <div>
+            <p style={{ fontSize: "12px", fontWeight: 600, color: "var(--aire-text)", margin: "0 0 2px" }}>Facebook Page Token</p>
+            <p style={{ fontSize: "11px", color: "var(--aire-muted)", margin: 0 }}>Tokens expire every 60 days — reconnect to refresh automatically.</p>
+          </div>
+          <a href="/api/facebook/auth" style={{ padding: "9px 18px", background: "#1877F2", color: "#fff", borderRadius: "9px", fontSize: "11px", fontWeight: 700, letterSpacing: "0.06em", textDecoration: "none", flexShrink: 0 }}>
+            🔗 CONNECT / REFRESH FACEBOOK
+          </a>
+        </div>
+
         {metaConnected && (
           <div style={connectedNoteStyle}>
             <p style={{ fontSize: "12px", color: MINT_INK }}>Meta is connected. One-click publish to IG and Facebook is active.</p>

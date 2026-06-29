@@ -123,6 +123,128 @@ const TOOLS: Anthropic.Tool[] = [
     description: "Get Baton Rouge macro market snapshot — 30-yr mortgage rate, local unemployment, housing starts, rate movement alert.",
     input_schema: { type: "object" as const, properties: {} },
   },
+  {
+    name: "get_social_drafts",
+    description: "List all social media posts currently in draft or scheduled status — shows caption, platform, scheduled date, quality score",
+    input_schema: {
+      type: "object" as const,
+      properties: { status: { type: "string", enum: ["draft", "scheduled", "all"], description: "Filter by status (default: draft)" } },
+    },
+  },
+  {
+    name: "create_social_post",
+    description: "Generate a new social media post draft using AI. Saves to the drafts queue automatically.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        topic: { type: "string", description: "What the post is about — e.g. 'Basil Lane listing pool', 'why I do real estate', 'market update June'" },
+        platform: { type: "string", enum: ["facebook", "instagram", "both"], description: "Target platform (default: both)" },
+        post_type: { type: "string", description: "Type of post: just_listed | market_update | client_story | educational | personal | reel" },
+        audience: { type: "string", description: "Target audience context e.g. '21-35 sphere', 'investors', 'first-time buyers'" },
+        scheduled_for: { type: "string", description: "ISO datetime to schedule, e.g. '2026-06-18T19:00:00'" },
+      },
+      required: ["topic"],
+    },
+  },
+  {
+    name: "push_post_to_facebook",
+    description: "Approve and push a draft post to Facebook as a scheduled post. Requires the post ID from get_social_drafts.",
+    input_schema: {
+      type: "object" as const,
+      properties: { post_id: { type: "string", description: "The ScheduledPost ID to push" } },
+      required: ["post_id"],
+    },
+  },
+  {
+    name: "score_caption",
+    description: "Score a caption 0-100 for brand fit, engagement potential, and audience resonance. Returns score + improvement notes.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        caption: { type: "string", description: "The caption text to score" },
+        audience: { type: "string", description: "Target audience context" },
+      },
+      required: ["caption"],
+    },
+  },
+  {
+    name: "sync_fb_insights",
+    description: "Pull Facebook engagement data (reach, impressions, likes, comments) for all published posts and save to AIRE",
+    input_schema: { type: "object" as const, properties: {} },
+  },
+  {
+    name: "search_zillow",
+    description: "Search Zillow market data cached in AIRE. Returns active listings or recent sales for comp analysis. Covers Baton Rouge, Zachary, and St. Francisville.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        city: {
+          type: "string",
+          enum: ["baton-rouge", "zachary", "st-francisville", "all"],
+          description: "Market to search (default: all)",
+        },
+        status: {
+          type: "string",
+          enum: ["for_sale", "recently_sold"],
+          description: "Listing status (default: for_sale)",
+        },
+        max_price: { type: "number", description: "Max listing price filter" },
+        min_price: { type: "number", description: "Min listing price filter" },
+        min_beds: { type: "number", description: "Minimum bedrooms" },
+        zip: { type: "string", description: "Filter by specific ZIP code" },
+        limit: { type: "number", description: "Max results to return (default 10)" },
+      },
+    },
+  },
+  {
+    name: "refresh_zillow_market",
+    description: "Trigger a fresh Zillow scrape for a market. Use when data is stale or you need current listings. Takes ~2 min.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        city: {
+          type: "string",
+          enum: ["baton-rouge", "zachary", "st-francisville"],
+          description: "City to scrape (default: baton-rouge)",
+        },
+        status: {
+          type: "string",
+          enum: ["for_sale", "recently_sold"],
+          description: "Which listings to fetch (default: for_sale)",
+        },
+      },
+    },
+  },
+  {
+    name: "search_memory",
+    description: `Search AIRE's memory — leads, contact logs, and Jarvis chat history.
+Use this when Caleb asks about past conversations, lead interests, contact history, or anything that requires looking across the database.
+Examples of when to call this:
+- "Which leads mentioned acreage?" → search contact_log + lead for "acreage"
+- "What did I last say to John Smith?" → search contact_log for "John Smith"
+- "Find leads cold 30+ days in Zachary" → combine get_cold_leads + search_memory for "Zachary"
+- "Who mentioned investment properties?" → search all types for "investment"
+Call this BEFORE answering any question about past interactions or lead history.`,
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        query: {
+          type: "string",
+          description: "The search query — use natural language, names, neighborhoods, topics",
+        },
+        types: {
+          type: "array",
+          items: { type: "string", enum: ["lead", "contact_log", "chat_message"] },
+          description: "Which source types to search (default: all). Use contact_log for past conversations.",
+        },
+        limit: {
+          type: "number",
+          description: "Max results to return (default 8, max 20)",
+        },
+      },
+      required: ["query"],
+    },
+  },
 ];
 
 async function executeTool(name: string, input: Record<string, unknown>): Promise<string> {
@@ -342,6 +464,286 @@ async function executeTool(name: string, input: Record<string, unknown>): Promis
         return lines.join("\n");
       }
 
+      case "get_social_drafts": {
+        const statusFilter = (input.status as string) || "draft";
+        const where = statusFilter === "all"
+          ? { status: { in: ["draft", "scheduled"] } }
+          : { status: statusFilter };
+        const posts = await prisma.scheduledPost.findMany({
+          where,
+          orderBy: { createdAt: "desc" },
+          take: 20,
+          select: { id: true, platform: true, caption: true, status: true, scheduledFor: true, qualityScore: true, postType: true, postId: true },
+        });
+        if (!posts.length) return `No ${statusFilter} posts found.`;
+        return posts.map(p =>
+          `[${p.id}] ${p.platform} ${p.postType ?? ""} | ${p.status} | score: ${p.qualityScore ?? "unscored"} | ${p.scheduledFor ? new Date(p.scheduledFor).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: "America/Chicago" }) : "no time set"}\n${p.caption.slice(0, 120)}...`
+        ).join("\n\n");
+      }
+
+      case "create_social_post": {
+        const topic = input.topic as string;
+        const platform = (input.platform as string) || "both";
+        const postType = (input.post_type as string) || "personal";
+        const audience = (input.audience as string) || "sphere, 21-35 Instagram";
+        const scheduledFor = input.scheduled_for ? new Date(input.scheduled_for as string) : null;
+
+        // Load evolved prompt if available
+        const evolved = await prisma.setting.findFirst({ where: { key: { startsWith: "content.promptEvolution" } }, orderBy: { key: "desc" } });
+        const evolutionContext = evolved ? `\n\nLEARNED PREFERENCES (from approved posts):\n${evolved.value}` : "";
+
+        const aiClient = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+        const msg = await aiClient.messages.create({
+          model: "claude-sonnet-4-6",
+          max_tokens: 512,
+          system: `You are writing social media captions for Caleb Jackson, REALTOR® at Rêve Realtors® in Baton Rouge.
+
+VOICE: Authentic, personal, never marketing-speak. Writes like he's texting from the couch.
+BANNED: "dream home", "luxury lifestyle", "nestled", "trusted advisor", "stunning", "just checking in"
+TARGET AUDIENCE: ${audience}
+CONTACT FOOTER: Caleb Jackson, REALTOR® / Rêve Realtors® · Baton Rouge, LA / (225) 747-0303 · caleb.jackson@reverealtors.com
+${evolutionContext}
+
+Write ONE caption. Short. Hook first. Real voice. No hashtags unless essential. Include contact footer on listing posts only.`,
+          messages: [{ role: "user", content: `Write a ${postType} post about: ${topic}` }],
+        });
+
+        const caption = (msg.content[0] as Anthropic.TextBlock).text;
+
+        // Score it
+        const scoreMsg = await aiClient.messages.create({
+          model: "claude-haiku-4-5-20251001",
+          max_tokens: 100,
+          system: "Score this real estate social caption 0-100. Criteria: brand voice authenticity (33pts), engagement hook strength (33pts), audience resonance for 21-35 sphere (34pts). Reply with ONLY a number.",
+          messages: [{ role: "user", content: caption }],
+        });
+        const scoreText = (scoreMsg.content[0] as Anthropic.TextBlock).text.trim();
+        const qualityScore = parseFloat(scoreText.match(/\d+(\.\d+)?/)?.[0] ?? "70");
+
+        const post = await prisma.scheduledPost.create({
+          data: {
+            platform,
+            caption,
+            postType,
+            status: "draft",
+            qualityScore,
+            scheduledFor,
+          },
+        });
+
+        return `Created draft post [${post.id}] — score ${qualityScore}/100\n\n${caption}`;
+      }
+
+      case "push_post_to_facebook": {
+        const postId = input.post_id as string;
+        const origin = process.env.NEXT_PUBLIC_APP_URL || "https://aire-intel.vercel.app";
+        const res = await fetch(`${origin}/api/social/drafts`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: postId, action: "approve" }),
+        });
+        const data = await res.json() as { ok?: boolean; fbPostId?: string; error?: string; note?: string };
+        if (data.ok) return `Pushed to Facebook ✓ — FB post ID: ${data.fbPostId ?? "scheduled draft"}${data.note ? ` (${data.note})` : ""}`;
+        return `Push failed: ${data.error}`;
+      }
+
+      case "score_caption": {
+        const caption = input.caption as string;
+        const audience = (input.audience as string) || "21-35 Instagram sphere";
+        const aiClient = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+        const msg = await aiClient.messages.create({
+          model: "claude-sonnet-4-6",
+          max_tokens: 300,
+          system: `You are scoring a real estate social media caption for Caleb Jackson at Rêve Realtors® Baton Rouge. Target audience: ${audience}.
+Score 0-100 across three dimensions:
+- Brand voice authenticity (33pts): sounds like a real person, no corporate speak, Caleb's tone
+- Engagement hook (33pts): first line stops the scroll, creates curiosity or emotion
+- Audience resonance (34pts): speaks to this specific audience's concerns and desires
+
+Reply in this format:
+SCORE: [number]
+VOICE: [score]/33 — [one sentence]
+HOOK: [score]/33 — [one sentence]
+RESONANCE: [score]/34 — [one sentence]
+FIX: [one specific improvement]`,
+          messages: [{ role: "user", content: caption }],
+        });
+        return (msg.content[0] as Anthropic.TextBlock).text;
+      }
+
+      case "sync_fb_insights": {
+        const tokenRow = await prisma.setting.findUnique({ where: { key: "META_PAGE_ACCESS_TOKEN" } });
+        const token = tokenRow?.value ?? process.env.META_PAGE_ACCESS_TOKEN;
+        if (!token) return "No Facebook token configured.";
+
+        const published = await prisma.scheduledPost.findMany({
+          where: { status: { in: ["scheduled", "approved"] }, postId: { not: null } },
+          select: { id: true, postId: true },
+        });
+        if (!published.length) return "No published posts to sync.";
+
+        let synced = 0;
+        for (const post of published) {
+          try {
+            const res = await fetch(
+              `https://graph.facebook.com/v21.0/${post.postId}/insights?metric=post_impressions,post_impressions_unique,post_engaged_users,post_clicks&access_token=${token}`
+            );
+            const data = await res.json() as { data?: Array<{ name: string; values?: Array<{ value: number }> }>; error?: { message: string } };
+            if (data.error || !data.data) continue;
+
+            const get = (name: string) => data.data?.find(d => d.name === name)?.values?.[0]?.value ?? null;
+            const impressions = get("post_impressions");
+            const reach = get("post_impressions_unique");
+            const engagement = get("post_engaged_users");
+            const engagementRate = reach && engagement ? Math.round((engagement / reach) * 1000) / 10 : null;
+
+            await prisma.scheduledPost.update({
+              where: { id: post.id },
+              data: { impressions, reach, engagement, engagementRate, publishedAt: new Date() },
+            });
+            synced++;
+          } catch { /* skip individual failures */ }
+        }
+        return `Synced Facebook insights for ${synced}/${published.length} posts.`;
+      }
+
+      case "search_zillow": {
+        const city = (input.city as string | undefined) ?? "all";
+        const status = (input.status as string | undefined) ?? "for_sale";
+        const limit = Math.min((input.limit as number | undefined) ?? 10, 30);
+
+        type ZillowListingWhere = {
+          status: string;
+          city?: { contains: string; mode: "insensitive" };
+          zip?: string;
+          price?: { gte?: number; lte?: number };
+          beds?: { gte: number };
+        };
+
+        const where: ZillowListingWhere = { status };
+
+        if (city !== "all") {
+          const cityNameMap: Record<string, string> = {
+            "baton-rouge": "baton rouge",
+            "zachary": "zachary",
+            "st-francisville": "saint francisville",
+          };
+          const fragment = cityNameMap[city] ?? city.replace("-", " ");
+          where.city = { contains: fragment, mode: "insensitive" };
+        }
+
+        if (input.zip) where.zip = input.zip as string;
+
+        if (input.min_price !== undefined || input.max_price !== undefined) {
+          where.price = {};
+          if (input.min_price !== undefined) where.price.gte = input.min_price as number;
+          if (input.max_price !== undefined) where.price.lte = input.max_price as number;
+        }
+
+        if (input.min_beds !== undefined) {
+          where.beds = { gte: input.min_beds as number };
+        }
+
+        const listings = await prisma.zillowListing.findMany({
+          where,
+          orderBy: status === "recently_sold" ? { soldDate: "desc" } : { daysOnMarket: "asc" },
+          take: limit,
+          select: {
+            zpid: true, address: true, city: true, zip: true,
+            price: true, beds: true, baths: true, sqft: true,
+            daysOnMarket: true, zestimate: true, status: true,
+            soldPrice: true, soldDate: true, listingUrl: true,
+            propertyType: true, yearBuilt: true, hoaFee: true,
+            scrapedAt: true,
+          },
+        });
+
+        if (!listings.length) {
+          const oldest = await prisma.zillowListing.findFirst({
+            where: { status },
+            orderBy: { scrapedAt: "desc" },
+            select: { scrapedAt: true },
+          });
+          const ageMsg = oldest
+            ? `Last scrape was ${Math.round((Date.now() - oldest.scrapedAt.getTime()) / 3_600_000)}h ago.`
+            : "No Zillow data in DB yet.";
+          return `No ${status.replace("_", " ")} listings found for ${city}. ${ageMsg} Try "refresh zillow market" to scrape fresh data.`;
+        }
+
+        const cacheAge = Math.round((Date.now() - listings[0].scrapedAt.getTime()) / 3_600_000);
+        const lines = [`${listings.length} ${status.replace("_", " ")} listings (cache: ${cacheAge}h old):`];
+
+        for (const l of listings) {
+          const priceStr = l.price ? `$${l.price.toLocaleString()}` : "price N/A";
+          const zestStr = l.zestimate ? ` | zest $${l.zestimate.toLocaleString()}` : "";
+          const domStr = l.daysOnMarket != null ? ` | ${l.daysOnMarket}d on market` : "";
+          const soldStr = l.soldPrice ? ` | sold $${l.soldPrice.toLocaleString()}` : "";
+          const soldDateStr = l.soldDate ? ` (${new Date(l.soldDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })})` : "";
+          lines.push(
+            `${l.address}, ${l.city} ${l.zip} — ${priceStr} · ${l.beds ?? "?"}bd/${l.baths ?? "?"}ba${l.sqft ? ` · ${l.sqft.toLocaleString()}sqft` : ""}${domStr}${zestStr}${soldStr}${soldDateStr}`
+          );
+        }
+
+        return lines.join("\n");
+      }
+
+      case "refresh_zillow_market": {
+        const city = (input.city as string | undefined) ?? "baton-rouge";
+        const status = (input.status as string | undefined) ?? "for_sale";
+        const origin = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+        const res = await fetch(`${origin}/api/zillow/scrape`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ city, status, force: false }),
+        });
+        const data = await res.json() as {
+          ok?: boolean; cached?: boolean; message?: string;
+          fetched?: number; upserted?: number; error?: string;
+        };
+        if (data.cached) return `Zillow data for ${city} is already fresh. ${data.message}`;
+        if (data.ok) return `Zillow scrape complete — ${data.fetched} listings fetched, ${data.upserted} saved to DB.`;
+        return `Scrape failed: ${data.error ?? "unknown error"}`;
+      }
+
+      case "search_memory": {
+        const query = input.query as string;
+        const types = input.types as string[] | undefined;
+        const limit = (input.limit as number | undefined) ?? 8;
+
+        const origin = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+        const res = await fetch(`${origin}/api/search/semantic`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ query, types, limit }),
+        });
+
+        if (!res.ok) return "Memory search unavailable.";
+
+        const data = await res.json() as {
+          results: Array<{
+            sourceType: string;
+            sourceId: string;
+            leadName: string | null;
+            excerpt: string;
+            sourceAt: string;
+            rank: number;
+          }>;
+          total: number;
+        };
+
+        if (!data.results.length) {
+          return `No results found for "${query}". The index may need rebuilding — try POST /api/search/index/rebuild.`;
+        }
+
+        return data.results.map((r, i) => {
+          const date = new Date(r.sourceAt).toLocaleDateString("en-US", {
+            month: "short", day: "numeric", year: "numeric",
+          });
+          const who = r.leadName ? `re: ${r.leadName}` : "";
+          return `${i + 1}. [${r.sourceType}] ${who} (${date})\n   ${r.excerpt.slice(0, 200)}`;
+        }).join("\n\n");
+      }
+
       default:
         return `Unknown tool: ${name}`;
     }
@@ -367,7 +769,7 @@ export async function POST(req: NextRequest) {
         ];
 
         const systemPrompt = `You are AIRE — Caleb Jackson's always-on real estate operations AI at Rêve Realtors® Baton Rouge.
-You have direct access to the CRM, pipeline, content queue, and action queue. You can execute actions — send messages, skip items, run agents, look up leads.
+You have direct access to the CRM, pipeline, content queue, action queue, and social media. You can execute actions — send messages, skip items, run agents, look up leads, create posts, push to Facebook.
 
 Current context: ${JSON.stringify(context ?? {})}
 Date: ${new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
@@ -375,15 +777,18 @@ Date: ${new Date().toLocaleDateString("en-US", { weekday: "long", month: "long",
 Operating rules:
 - Be brief and direct. Max 2 sentences unless listing items.
 - When you execute something, confirm what you did in one sentence.
-- Don't ask for permission before looking something up — just look it up.
+- Don't ask for permission before looking something up or creating a draft — just do it.
 - Do ask "via SMS or email?" before sending a message if channel is ambiguous.
-- Caleb's market: Baton Rouge LA — EBR Parish corridors, Zachary, St. Francisville.
-- Tone: efficient, no filler, Jarvis-level clarity.`;
+- For social posts: write in Caleb's authentic voice — never corporate speak. Banned words: "dream home", "luxury lifestyle", "nestled", "stunning", "trusted advisor".
+- Caleb's contact footer for listing posts: Caleb Jackson, REALTOR® / Rêve Realtors® · Baton Rouge, LA / (225) 747-0303 · caleb.jackson@reverealtors.com
+- Caleb's market: Baton Rouge LA — EBR Parish, Zachary, St. Francisville, West Feliciana.
+- Tone: efficient, no filler, Jarvis-level clarity.
+- Social media audience: 21-35 Instagram sphere unless otherwise specified.`;
 
         // Agentic loop — run until no more tool calls
         for (let round = 0; round < 5; round++) {
           const response = await client.messages.create({
-            model: "claude-fable-5",
+            model: "claude-opus-4-8",
             max_tokens: 1024,
             system: systemPrompt,
             tools: TOOLS,

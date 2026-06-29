@@ -146,6 +146,66 @@ export async function getMarketStats(zipCode: string): Promise<MarketStats> {
   }, { maxAttempts: 2, source: "rentcast/getMarketStats" });
 }
 
+export interface SaleListing {
+  id: string;
+  address: string;
+  city: string;
+  state: string;
+  zip: string;
+  price: number | null;
+  beds: number | null;
+  baths: number | null;
+  sqft: number | null;
+  status: string;
+  daysOnMarket: number | null;
+  mlsNumber: string;
+  propertyType: string | null;
+  listingAgent: string | null;
+  listedDate: string | null;
+}
+
+// Active sale listings in a city — used for the market board
+export async function fetchSaleListings(
+  city = "Baton Rouge",
+  state = "LA",
+  opts: { limit?: number; minPrice?: number; maxPrice?: number } = {}
+): Promise<SaleListing[]> {
+  return withRetry(async () => {
+    const key = process.env.RENTCAST_API_KEY;
+    if (!key) throw new Error("RENTCAST_API_KEY not set");
+    const params = new URLSearchParams({
+      city,
+      state,
+      status: "Active",
+      limit: String(Math.min(opts.limit ?? 20, 50)),
+    });
+    const res = await fetch(`${BASE_URL}/listings/sale?${params}`, { headers: headers() });
+    if (!res.ok) throw new Error(`Rentcast listings failed: ${res.status}`);
+    const data = await res.json() as Array<Record<string, unknown>>;
+    const items: SaleListing[] = data.map((r) => ({
+      id: (r.id ?? `rc-${r.addressLine1}`) as string,
+      address: (r.addressLine2 ? `${r.addressLine1}, ${r.addressLine2}` : r.addressLine1 ?? r.formattedAddress ?? "") as string,
+      city: (r.city ?? city) as string,
+      state: (r.state ?? state) as string,
+      zip: (r.zipCode ?? "") as string,
+      price: (r.price ?? null) as number | null,
+      beds: (r.bedrooms ?? null) as number | null,
+      baths: (r.bathrooms ?? null) as number | null,
+      sqft: (r.squareFootage ?? null) as number | null,
+      status: (r.status ?? "Active") as string,
+      daysOnMarket: (r.daysOnMarket ?? null) as number | null,
+      mlsNumber: (r.mlsNumber ?? "") as string,
+      propertyType: (r.propertyType ?? null) as string | null,
+      listingAgent: ((r.listingAgent as Record<string, unknown>)?.name ?? null) as string | null,
+      listedDate: (r.listedDate ?? null) as string | null,
+    }));
+    let filtered = items;
+    if (opts.minPrice) filtered = filtered.filter(l => l.price == null || l.price >= opts.minPrice!);
+    if (opts.maxPrice) filtered = filtered.filter(l => l.price == null || l.price <= opts.maxPrice!);
+    return filtered;
+  }, { maxAttempts: 2, source: "rentcast/fetchSaleListings" });
+}
+
 // Convenience: full CMA summary for an address
 export async function buildCMASummary(
   address: string,

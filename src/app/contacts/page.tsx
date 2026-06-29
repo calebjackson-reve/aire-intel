@@ -2,8 +2,9 @@
 
 import { useEffect, useState, useRef, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { UserPlus, Search } from "lucide-react";
+import { UserPlus, Search, LayoutList, Table2 } from "lucide-react";
 import ContactQuickPanel from "@/components/ContactQuickPanel";
+import LeadsTable from "@/components/LeadsTable";
 
 interface Lead {
   id: string;
@@ -13,6 +14,8 @@ interface Lead {
   lastContactDate: string | null;
   nextActionNote: string | null;
   tasks: { id: string; done: boolean }[];
+  photoUrl: string | null;
+  instagramHandle: string | null;
 }
 
 const STAGE_LABELS: Record<string, string> = {
@@ -65,6 +68,7 @@ function ContactsInner() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
+  const [view, setView] = useState<"table" | "list">("table");
   const [leads, setLeads] = useState<Lead[]>([]);
   const [q, setQ] = useState("");
   const [stage, setStage] = useState("");
@@ -74,10 +78,6 @@ function ContactsInner() {
   const [total, setTotal] = useState(0);
   const [pages, setPages] = useState(1);
   const [addModalOpen, setAddModalOpen] = useState(false);
-  const [newName, setNewName] = useState("");
-  const [newPhone, setNewPhone] = useState("");
-  const [newEmail, setNewEmail] = useState("");
-  const [newPrice, setNewPrice] = useState("");
 
   // Selected contact for right panel
   const [selectedId, setSelectedId] = useState<string | null>(
@@ -136,6 +136,89 @@ function ContactsInner() {
     return sf ? sf.filter(lead) : true;
   });
 
+  // Inline stage change from the table — optimistic update + PATCH
+  async function handleStageChange(id: string, newStage: string) {
+    setLeads(prev => prev.map(l => l.id === id ? { ...l, stage: newStage } : l));
+    try {
+      await fetch(`/api/leads/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ stage: newStage }),
+      });
+      window.dispatchEvent(new Event("aire:refresh"));
+    } catch {}
+  }
+
+  async function handleBulkAction(ids: string[], action: string) {
+    if (action === "stage") {
+      // simplest UX: prompt for target stage
+      const target = window.prompt("Set stage for selected leads (new_lead, active, showing, under_contract, closed):", "active");
+      if (!target) return;
+      setLeads(prev => prev.map(l => ids.includes(l.id) ? { ...l, stage: target } : l));
+      await Promise.all(ids.map(id =>
+        fetch(`/api/leads/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ stage: target }),
+        }).catch(() => {})
+      ));
+      window.dispatchEvent(new Event("aire:refresh"));
+    } else if (action === "smart-plan") {
+      router.push(`/smart-plans?leads=${ids.join(",")}`);
+    }
+  }
+
+  // ── TABLE VIEW — full-width sortable leads table (Lofty-style) ──
+  if (view === "table") {
+    return (
+      <div style={{ padding: "26px 30px 70px", maxWidth: "1280px", margin: "0 auto" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "18px", gap: "12px", flexWrap: "wrap" }}>
+          <div style={{ display: "flex", alignItems: "baseline", gap: "12px" }}>
+            <h1 className="font-display" style={{ fontSize: "26px", color: "var(--aire-text)" }}>Contacts</h1>
+            <span style={{ fontSize: "13px", color: "var(--aire-muted)" }}>{total.toLocaleString()} total</span>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            {/* View toggle */}
+            <div className="cx-viewtoggle">
+              <button className={`cx-vt${view === "table" ? " on" : ""}`} onClick={() => setView("table")} title="Table view">
+                <Table2 size={15} /> Table
+              </button>
+              <button className={`cx-vt${(view as string) === "list" ? " on" : ""}`} onClick={() => setView("list")} title="List view">
+                <LayoutList size={15} /> List
+              </button>
+            </div>
+            <button className="cx-addc" onClick={() => setAddModalOpen(true)}>
+              <UserPlus size={15} /> Add
+            </button>
+          </div>
+        </div>
+
+        {loading ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+            {[...Array(10)].map((_, i) => (
+              <div key={i} className="skeleton" style={{ height: "48px", borderRadius: "10px" }} />
+            ))}
+          </div>
+        ) : (
+          <LeadsTable
+            leads={visible}
+            total={total}
+            onStageChange={handleStageChange}
+            onBulkAction={handleBulkAction}
+          />
+        )}
+
+        {/* Reuse the add-contact modal */}
+        {addModalOpen && (
+          <AddContactModal
+            onClose={() => setAddModalOpen(false)}
+            onSaved={created => { setLeads(prev => [created, ...prev]); setAddModalOpen(false); }}
+          />
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="cx-shell">
 
@@ -144,9 +227,19 @@ function ContactsInner() {
         <div className="cx-lhead">
           <div className="r1">
             <h1>Contacts</h1>
-            <button className="cx-addc" onClick={() => setAddModalOpen(true)}>
-              <UserPlus /> Add
-            </button>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <div className="cx-viewtoggle">
+                <button className={`cx-vt${(view as string) === "table" ? " on" : ""}`} onClick={() => setView("table")} title="Table view">
+                  <Table2 size={15} />
+                </button>
+                <button className={`cx-vt${view === "list" ? " on" : ""}`} onClick={() => setView("list")} title="List view">
+                  <LayoutList size={15} />
+                </button>
+              </div>
+              <button className="cx-addc" onClick={() => setAddModalOpen(true)}>
+                <UserPlus /> Add
+              </button>
+            </div>
           </div>
           <div className="cx-search">
             <Search />
@@ -201,9 +294,12 @@ function ContactsInner() {
               >
                 <div
                   className="cx-av"
-                  style={{ background: `linear-gradient(135deg, ${color}, rgba(255,255,255,.22))` }}
+                  style={{ background: `linear-gradient(135deg, ${color}, rgba(255,255,255,.22))`, overflow: 'hidden', padding: 0 }}
                 >
-                  {initials(lead.name)}
+                  {lead.photoUrl
+                    ? <img src={lead.photoUrl} alt={lead.name} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                    : initials(lead.name)
+                  }
                 </div>
                 <div style={{ minWidth: 0 }}>
                   <div className="nm" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -267,77 +363,85 @@ function ContactsInner() {
 
       {/* ── ADD CONTACT MODAL ── */}
       {addModalOpen && (
-        <div
-          onClick={() => setAddModalOpen(false)}
-          style={{
-            position: "fixed", inset: 0, background: "rgba(17,24,39,0.35)",
-            backdropFilter: "blur(6px)", zIndex: 1000,
-            display: "flex", alignItems: "center", justifyContent: "center", padding: "16px",
-          }}
-        >
-          <div
-            onClick={e => e.stopPropagation()}
-            style={{
-              background: "var(--aire-card-warm)", border: "1px solid var(--aire-border-2)",
-              borderRadius: "16px", padding: "24px", width: "100%", maxWidth: "420px",
-              boxShadow: "var(--shadow-float-hover)",
-              animation: "scale-in 180ms var(--ease-out-expo) both",
-            }}
-          >
-            <p style={{ fontSize: "10px", letterSpacing: "0.20em", color: "var(--aire-muted)", marginBottom: "18px", fontWeight: 600 }}>
-              NEW CONTACT
-            </p>
-            <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-              <input
-                className="aire-input" placeholder="Full name *" value={newName}
-                onChange={e => setNewName(e.target.value)} style={{ width: "100%" }}
-              />
-              <input
-                className="aire-input" placeholder="Phone" value={newPhone}
-                onChange={e => setNewPhone(e.target.value)} style={{ width: "100%" }}
-              />
-              <input
-                className="aire-input" placeholder="Email" value={newEmail}
-                onChange={e => setNewEmail(e.target.value)} style={{ width: "100%" }}
-              />
-              <input
-                className="aire-input" placeholder="Price point (e.g. 650000)" type="number"
-                value={newPrice} onChange={e => setNewPrice(e.target.value)} style={{ width: "100%" }}
-              />
-            </div>
-            <div style={{ display: "flex", gap: "8px", marginTop: "18px" }}>
-              <button
-                className="btn-coral"
-                style={{ fontSize: "11px", letterSpacing: "0.12em" }}
-                onClick={async () => {
-                  if (!newName.trim()) return;
-                  const res = await fetch("/api/contacts", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                      name: newName.trim(),
-                      phone: newPhone || null,
-                      email: newEmail || null,
-                      pricePoint: newPrice ? parseFloat(newPrice) : null,
-                      stage: "new_lead",
-                    }),
-                  });
-                  const created = await res.json();
-                  setLeads(prev => [created, ...prev]);
-                  selectLead(created.id);
-                  setAddModalOpen(false);
-                  setNewName(""); setNewPhone(""); setNewEmail(""); setNewPrice("");
-                }}
-              >
-                SAVE CONTACT
-              </button>
-              <button className="btn-ghost" style={{ fontSize: "11px", letterSpacing: "0.12em" }} onClick={() => setAddModalOpen(false)}>
-                CANCEL
-              </button>
-            </div>
-          </div>
-        </div>
+        <AddContactModal
+          onClose={() => setAddModalOpen(false)}
+          onSaved={created => { setLeads(prev => [created, ...prev]); selectLead(created.id); setAddModalOpen(false); }}
+        />
       )}
+    </div>
+  );
+}
+
+interface AddContactModalProps {
+  onClose: () => void;
+  onSaved: (created: Lead) => void;
+}
+
+function AddContactModal({ onClose, onSaved }: AddContactModalProps) {
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
+  const [price, setPrice] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  async function save() {
+    if (!name.trim() || saving) return;
+    setSaving(true);
+    try {
+      const res = await fetch("/api/contacts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: name.trim(),
+          phone: phone || null,
+          email: email || null,
+          pricePoint: price ? parseFloat(price) : null,
+          stage: "new_lead",
+        }),
+      });
+      const created = await res.json();
+      onSaved(created);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: "fixed", inset: 0, background: "rgba(17,24,39,0.35)",
+        backdropFilter: "blur(6px)", zIndex: 1000,
+        display: "flex", alignItems: "center", justifyContent: "center", padding: "16px",
+      }}
+    >
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{
+          background: "var(--aire-card-warm)", border: "1px solid var(--aire-border-2)",
+          borderRadius: "16px", padding: "24px", width: "100%", maxWidth: "420px",
+          boxShadow: "var(--shadow-float-hover)",
+          animation: "scale-in 180ms var(--ease-out-expo) both",
+        }}
+      >
+        <p style={{ fontSize: "10px", letterSpacing: "0.20em", color: "var(--aire-muted)", marginBottom: "18px", fontWeight: 600 }}>
+          NEW CONTACT
+        </p>
+        <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+          <input className="aire-input" placeholder="Full name *" value={name} onChange={e => setName(e.target.value)} style={{ width: "100%" }} autoFocus />
+          <input className="aire-input" placeholder="Phone" value={phone} onChange={e => setPhone(e.target.value)} style={{ width: "100%" }} />
+          <input className="aire-input" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} style={{ width: "100%" }} />
+          <input className="aire-input" placeholder="Price point (e.g. 650000)" type="number" value={price} onChange={e => setPrice(e.target.value)} style={{ width: "100%" }} />
+        </div>
+        <div style={{ display: "flex", gap: "8px", marginTop: "18px" }}>
+          <button className="btn-coral" style={{ fontSize: "11px", letterSpacing: "0.12em" }} onClick={save} disabled={saving}>
+            {saving ? "SAVING…" : "SAVE CONTACT"}
+          </button>
+          <button className="btn-ghost" style={{ fontSize: "11px", letterSpacing: "0.12em" }} onClick={onClose}>
+            CANCEL
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

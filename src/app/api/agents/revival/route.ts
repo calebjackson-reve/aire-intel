@@ -1,8 +1,9 @@
 export const dynamic = "force-dynamic";
+export const maxDuration = 120;
 import { prisma } from "@/lib/prisma";
 import { getDeadLeads } from "@/lib/revival";
 import { generateDraft } from "@/lib/draft-agent";
-import { verifyCronSecret, cronUnauthorized } from "@/lib/cron-auth";
+import { verifyCronSecret, verifyCronOrInternal, cronUnauthorized } from "@/lib/cron-auth";
 import { startRun, finishRun, failRun } from "@/lib/agent-run";
 import { getTodayCT } from "@/lib/brief-date";
 
@@ -19,7 +20,8 @@ export async function POST(request: Request) {
   return runRevival();
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  if (!verifyCronOrInternal(request)) return cronUnauthorized();
   return runRevival();
 }
 

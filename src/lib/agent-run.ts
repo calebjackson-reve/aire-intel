@@ -6,7 +6,8 @@ export type AgentType =
   | "transaction_watchdog"
   | "market_intel"
   | "content_scheduler"
-  | "morning_brief";
+  | "morning_brief"
+  | "opportunity_detector";
 
 /** Start a new AgentRun record and return its id. */
 export async function startRun(agentType: AgentType): Promise<string> {

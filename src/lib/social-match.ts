@@ -204,3 +204,134 @@ export function crossReference(
     unmatchedCount: unmatched,
   };
 }
+
+// ─── vCard parser ──────────────────────────────────────────────────────────
+export interface VCardContact {
+  name: string;
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  phone?: string;
+  uid?: string;
+}
+
+/** Parse a .vcf file (single or multi-card) into structured contacts. */
+export function parseVCard(raw: string): VCardContact[] {
+  const contacts: VCardContact[] = [];
+  const cards = raw.split(/BEGIN:VCARD/i).slice(1);
+
+  for (const card of cards) {
+    const get = (key: string) => {
+      const m = card.match(new RegExp(`^${key}[^:]*:(.+)$`, "im"));
+      return m?.[1]?.trim().replace(/\r/g, "") ?? undefined;
+    };
+
+    const fnLine = get("FN");
+    if (!fnLine) continue;
+
+    const nLine = get("N"); // last;first;middle;prefix;suffix
+    const parts = nLine?.split(";") ?? [];
+    const firstName = parts[1]?.trim() || undefined;
+    const lastName = parts[0]?.trim() || undefined;
+
+    // Pick first phone (work, cell, home — whatever's there)
+    const phoneLine = card.match(/^TEL[^:]*:(.+)$/im)?.[1]?.trim().replace(/\r/g, "");
+    // Pick first email
+    const emailLine = card.match(/^EMAIL[^:]*:(.+)$/im)?.[1]?.trim().replace(/\r/g, "");
+    const uid = get("UID");
+
+    contacts.push({
+      name: fnLine,
+      firstName,
+      lastName,
+      email: emailLine,
+      phone: phoneLine,
+      uid,
+    });
+  }
+
+  return contacts;
+}
+
+// ─── Instagram export parser ──────────────────────────────────────────────
+export interface IGPerson {
+  handle: string;
+  name?: string;
+  url?: string;
+}
+
+/**
+ * Parse Instagram "Download Your Information" following/followers JSON.
+ * Format: { "relationships_followers": [{ "string_list_data": [{ "value": "@handle", "href": "..." }] }] }
+ * or the simpler flat array format from newer IG exports.
+ */
+export function parseInstagramJson(raw: string): IGPerson[] {
+  try {
+    const data = JSON.parse(raw);
+    const extract = (arr: unknown[]): IGPerson[] =>
+      arr.flatMap((entry: unknown) => {
+        const e = entry as Record<string, unknown>;
+        // Nested format
+        const items = (e.string_list_data ?? e.data ?? []) as Array<Record<string, string>>;
+        if (items.length) {
+          return items.map((i) => ({
+            handle: (i.value ?? i.username ?? "").replace(/^@/, ""),
+            name: i.title ?? undefined,
+            url: i.href ?? undefined,
+          })).filter((p) => p.handle);
+        }
+        // Flat format
+        if (e.username || e.value) {
+          return [{ handle: String(e.username ?? e.value ?? "").replace(/^@/, ""), name: e.full_name as string | undefined }];
+        }
+        return [];
+      });
+
+    // Try multiple known IG export shapes
+    const list =
+      data.relationships_followers ??
+      data.relationships_following ??
+      data.followers ??
+      data.following ??
+      (Array.isArray(data) ? data : []);
+
+    return extract(list).filter((p) => p.handle.length > 0);
+  } catch {
+    return [];
+  }
+}
+
+// ─── Cross-source dedup across SocialPerson + Lead ───────────────────────
+/** Normalize phone to 10-digit US. */
+export function normPhone(s: string | null | undefined): string {
+  return (s ?? "").replace(/[^\d]/g, "").replace(/^1(\d{10})$/, "$1").slice(-10);
+}
+
+export function normEmail(s: string | null | undefined): string {
+  return (s ?? "").trim().toLowerCase();
+}
+
+/** Find duplicate pairs within an array of people (name/phone/email overlap). */
+export function findDuplicates<T extends { id: string; name: string; phone?: string | null; email?: string | null }>(
+  people: T[],
+): Array<{ a: T; b: T; score: number; reason: string }> {
+  const dupes: Array<{ a: T; b: T; score: number; reason: string }> = [];
+  for (let i = 0; i < people.length; i++) {
+    for (let j = i + 1; j < people.length; j++) {
+      const a = people[i], b = people[j];
+      const aPhone = normPhone(a.phone), bPhone = normPhone(b.phone);
+      const aEmail = normEmail(a.email), bEmail = normEmail(b.email);
+      if (aPhone.length === 10 && aPhone === bPhone) {
+        dupes.push({ a, b, score: 1.0, reason: "same phone" }); continue;
+      }
+      if (aEmail && aEmail === bEmail) {
+        dupes.push({ a, b, score: 1.0, reason: "same email" }); continue;
+      }
+      const nameSim = sim(normalize(a.name), normalize(b.name));
+      if (nameSim >= 0.92) {
+        dupes.push({ a, b, score: nameSim, reason: `name match ${Math.round(nameSim * 100)}%` });
+      }
+    }
+  }
+  return dupes.sort((x, y) => y.score - x.score);
+}

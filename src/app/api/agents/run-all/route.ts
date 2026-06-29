@@ -1,5 +1,6 @@
 export const dynamic = "force-dynamic";
-import { verifyCronSecret, cronUnauthorized } from "@/lib/cron-auth";
+export const maxDuration = 300;
+import { verifyCronSecret, verifyCronOrInternal, cronUnauthorized } from "@/lib/cron-auth";
 
 // POST /api/agents/run-all — trigger all agents in sequence (for dev/testing and manual runs)
 // GET version is also allowed for quick manual trigger from the browser
@@ -10,7 +11,8 @@ export async function POST(request: Request) {
   return runAll();
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  if (!verifyCronOrInternal(request)) return cronUnauthorized();
   return runAll();
 }
 

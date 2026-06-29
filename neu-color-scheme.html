@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>AIRÉ × NEU — Color Scheme · Orange Contrast</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Josefin+Sans:wght@300;400;500;600&family=Fraunces:opsz,wght@9..144,300;9..144,400&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --orange:#FB7A01; --orange-light:#FFA667; --orange-tint:#FFD9BC; --orange-deep:#D7863B;
+    --orange-soft:rgba(251,122,1,0.14);
+    --bg:#0D0E0F; --bg-2:#1A1B1F; --surface:#26272B; --raised:#2D2F34; --edge:#34393F;
+    --text:#F2EFE8; --text-2:#B1B5C6; --text-3:#757E95;
+    --nm-dark:#0B0C0D; --nm-light:#34373E;
+    --cream:#EFDD84;
+    --sans:'Josefin Sans',system-ui,sans-serif;
+    --display:'Fraunces',Georgia,serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:var(--sans);line-height:1.6;-webkit-font-smoothing:antialiased;letter-spacing:0.02em}
+  .wrap{max-width:1080px;margin:0 auto;padding:64px 40px 110px}
+  .eyebrow{font-size:11px;letter-spacing:0.32em;text-transform:uppercase;color:var(--text-3);font-weight:500}
+  h1{font-family:var(--display);font-weight:300;font-size:52px;letter-spacing:-0.02em;margin-top:16px;line-height:1.05}
+  h1 b{color:var(--orange);font-weight:300}
+  .lede{color:var(--text-2);font-size:16px;max-width:60ch;margin-top:18px;font-weight:300}
+  section{margin-top:64px}
+  .sec{display:flex;align-items:baseline;gap:14px;border-bottom:1px solid rgba(244,241,233,0.08);padding-bottom:12px;margin-bottom:26px}
+  .sec .n{font-family:var(--display);font-size:13px;color:var(--orange)}
+  .sec h2{font-family:var(--display);font-weight:400;font-size:20px}
+  .sec .tail{margin-left:auto;font-size:12px;color:var(--text-3)}
+
+  .row{display:grid;gap:14px}
+  .swatches{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+  .sw{border-radius:16px;overflow:hidden;background:var(--surface);box-shadow:6px 6px 14px var(--nm-dark),-6px -6px 14px var(--nm-light)}
+  .sw .chip{height:84px}
+  .sw .meta{padding:12px 14px}
+  .sw .role{font-size:13px}
+  .sw .hex{font-size:11px;color:var(--text-3);letter-spacing:0.06em;margin-top:2px}
+
+  .ratio{display:flex;height:46px;border-radius:12px;overflow:hidden;margin-top:6px;box-shadow:inset 3px 3px 8px var(--nm-dark),inset -3px -3px 8px var(--nm-light)}
+  .ratio span{display:flex;align-items:center;justify-content:center;font-size:11px;letter-spacing:0.08em}
+
+  /* neumorphic component demo */
+  .stage{background:var(--bg);border-radius:24px;padding:38px;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:30px;box-shadow:inset 2px 2px 6px #050506,inset -2px -2px 6px #161719}
+  .nm{background:var(--surface);box-shadow:7px 7px 16px var(--nm-dark),-7px -7px 16px var(--nm-light)}
+  .pressed{box-shadow:inset 5px 5px 12px var(--nm-dark),inset -5px -5px 12px var(--nm-light)}
+  .demo-card{border-radius:20px;padding:24px}
+  .demo-card .k{font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-3)}
+  .demo-card .v{font-family:var(--display);font-size:40px;font-weight:300;color:var(--cream);margin-top:8px;line-height:1}
+  .demo-card .bar{height:5px;width:64px;background:var(--orange);border-radius:3px;margin-top:14px}
+
+  .btn{font-family:var(--sans);font-weight:600;font-size:13px;letter-spacing:0.08em;text-transform:uppercase;border:none;cursor:pointer;border-radius:999px;padding:15px 26px;color:#1a0f02;background:var(--orange);box-shadow:5px 5px 12px var(--nm-dark),-5px -5px 12px var(--nm-light);transition:.3s}
+  .btn:hover{background:var(--orange-light)}
+  .btn-ghost{background:var(--surface);color:var(--text);box-shadow:5px 5px 12px var(--nm-dark),-5px -5px 12px var(--nm-light)}
+
+  .toggle{width:78px;height:42px;border-radius:999px;display:flex;align-items:center;padding:5px;background:var(--surface)}
+  .toggle .knob{width:32px;height:32px;border-radius:50%;background:var(--orange);margin-left:auto;box-shadow:0 0 14px rgba(251,122,1,0.55)}
+
+  .ring{width:96px;height:96px;border-radius:50%;display:grid;place-items:center;background:conic-gradient(var(--orange) 0 72%, #2d2f34 72% 100%)}
+  .ring .inner{width:74px;height:74px;border-radius:50%;background:var(--surface);display:grid;place-items:center;box-shadow:inset 4px 4px 9px var(--nm-dark),inset -4px -4px 9px var(--nm-light);font-family:var(--display);font-size:20px;color:var(--text)}
+
+  .dot-btn{width:64px;height:64px;border-radius:50%;display:grid;place-items:center;background:var(--surface)}
+  .dot-btn .heart{width:18px;height:18px;background:var(--orange);clip-path:path('M9 16s-7-4.35-7-9a4 4 0 0 1 7-2.6A4 4 0 0 1 16 7c0 4.65-7 9-7 9z')}
+
+  .label{font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-3);text-align:center;margin-top:14px}
+  .cell{display:flex;flex-direction:column;align-items:center;justify-content:center}
+  .foot{margin-top:80px;border-top:1px solid rgba(244,241,233,0.08);padding-top:20px;display:flex;justify-content:space-between;color:var(--text-3);font-size:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">AIRÉ × NEU · Color Scheme</p>
+  <h1>Dark neumorphic, <b>orange contrast.</b></h1>
+  <p class="lede">The NEU kit's exact orange (<b style="color:var(--orange)">#FB7A01</b>) as the single high-contrast accent, set against a layered charcoal neumorphic base. Soft extruded surfaces, one warm signal color, cream reserved for figures. Tactile, but luxury — not consumer-app.</p>
+
+  <!-- Accent -->
+  <section>
+    <div class="sec"><span class="n">01</span><h2>The accent</h2><span class="tail">use sparingly — actions & focus only</span></div>
+    <div class="row swatches">
+      <div class="sw"><div class="chip" style="background:#FB7A01"></div><div class="meta"><div class="role">Orange · primary</div><div class="hex">#FB7A01</div></div></div>
+      <div class="sw"><div class="chip" style="background:#FFA667"></div><div class="meta"><div class="role">Orange · hover</div><div class="hex">#FFA667</div></div></div>
+      <div class="sw"><div class="chip" style="background:#D7863B"></div><div class="meta"><div class="role">Orange · pressed</div><div class="hex">#D7863B</div></div></div>
+      <div class="sw"><div class="chip" style="background:#FFD9BC"></div><div class="meta"><div class="role">Orange · tint</div><div class="hex">#FFD9BC</div></div></div>
+    </div>
+  </section>
+
+  <!-- Base -->
+  <section>
+    <div class="sec"><span class="n">02</span><h2>Charcoal base</h2><span class="tail">layered neumorphic surfaces</span></div>
+    <div class="row swatches">
+      <div class="sw"><div class="chip" style="background:#0D0E0F"></div><div class="meta"><div class="role">Canvas</div><div class="hex">#0D0E0F</div></div></div>
+      <div class="sw"><div class="chip" style="background:#1A1B1F"></div><div class="meta"><div class="role">Sunken</div><div class="hex">#1A1B1F</div></div></div>
+      <div class="sw"><div class="chip" style="background:#26272B"></div><div class="meta"><div class="role">Surface</div><div class="hex">#26272B</div></div></div>
+      <div class="sw"><div class="chip" style="background:#2D2F34"></div><div class="meta"><div class="role">Raised</div><div class="hex">#2D2F34</div></div></div>
+      <div class="sw"><div class="chip" style="background:#34393F"></div><div class="meta"><div class="role">Edge / highlight</div><div class="hex">#34393F</div></div></div>
+    </div>
+  </section>
+
+  <!-- Text + figure -->
+  <section>
+    <div class="sec"><span class="n">03</span><h2>Text & figures</h2></div>
+    <div class="row swatches">
+      <div class="sw"><div class="chip" style="background:#F2EFE8"></div><div class="meta"><div class="role">Text · primary</div><div class="hex">#F2EFE8</div></div></div>
+      <div class="sw"><div class="chip" style="background:#B1B5C6"></div><div class="meta"><div class="role">Text · muted</div><div class="hex">#B1B5C6</div></div></div>
+      <div class="sw"><div class="chip" style="background:#757E95"></div><div class="meta"><div class="role">Text · faint</div><div class="hex">#757E95</div></div></div>
+      <div class="sw"><div class="chip" style="background:#EFDD84"></div><div class="meta"><div class="role">Cream · money</div><div class="hex">#EFDD84</div></div></div>
+    </div>
+  </section>
+
+  <!-- Balance -->
+  <section>
+    <div class="sec"><span class="n">04</span><h2>Color balance</h2><span class="tail">the discipline — ~70 / 22 / 6 / 2</span></div>
+    <div class="ratio">
+      <span style="flex:70;background:#1A1B1F;color:#757E95">charcoal 70%</span>
+      <span style="flex:22;background:#2D2F34;color:#B1B5C6">surface 22%</span>
+      <span style="flex:6;background:#EFDD84;color:#5a4f1a">cream 6%</span>
+      <span style="flex:2;background:#FB7A01;color:#1a0f02">orange 2%</span>
+    </div>
+  </section>
+
+  <!-- In context -->
+  <section>
+    <div class="sec"><span class="n">05</span><h2>In context</h2><span class="tail">neumorphic depth + orange signal</span></div>
+    <div class="stage">
+      <div class="cell">
+        <div class="demo-card nm"><div class="k">Volume YTD</div><div class="v">$8.4M</div><div class="bar"></div></div>
+        <div class="label">stat card</div>
+      </div>
+      <div class="cell">
+        <button class="btn">Approve &amp; send</button>
+        <div style="height:14px"></div>
+        <button class="btn btn-ghost" style="color:var(--text)">Skip</button>
+        <div class="label">buttons</div>
+      </div>
+      <div class="cell">
+        <div class="toggle nm pressed"><div class="knob"></div></div>
+        <div style="height:18px"></div>
+        <div class="dot-btn nm"><div class="heart"></div></div>
+        <div class="label">toggle · icon</div>
+      </div>
+      <div class="cell">
+        <div class="ring"><div class="inner">82%</div></div>
+        <div class="label">GCI pacing</div>
+      </div>
+    </div>
+  </section>
+
+  <div class="foot"><span>AIRÉ × NEU · Rêve Realtors®</span><span>Orange contrast scheme · 2026-06-23</span></div>
+</div>
+</body>
+</html>

@@ -20,6 +20,8 @@ export interface PostInsight {
   shares: number;
   saves: number;            // IG only
   engagementRate: number;   // engagement / reach
+  avgWatchTime?: number;    // Reels only — ig_reels_avg_watch_time (seconds)
+  caption?: string;         // raw caption text — used for hashtag extraction in Loop 32
 }
 
 export interface PageDemographics {
@@ -141,26 +143,23 @@ async function fetchFacebookPostInsights(pageId: string, token: string): Promise
 // ─── Instagram Business Media Insights ──────────────────────────────────────
 
 async function fetchInstagramPostInsights(igId: string, token: string): Promise<PostInsight[]> {
-  const mediaUrl = `${GRAPH_BASE}/${igId}/media?fields=id,timestamp,media_type&limit=50&access_token=${token}`;
+  // caption needed for Loop 32 hashtag extraction; media_product_type for Reel detection
+  const mediaUrl = `${GRAPH_BASE}/${igId}/media?fields=id,timestamp,media_type,media_product_type,caption&limit=50&access_token=${token}`;
   const mediaRes = await fetch(mediaUrl, { signal: AbortSignal.timeout(15_000) });
-  // Fail soft — token may lack instagram_manage_insights or the IG account may
-  // not be a Business account. We log once at debug level (via console) but
-  // don't throw because the dashboard polls this every 30 minutes; throwing
-  // would spam the ErrorLog every page render.
   if (!mediaRes.ok) {
     console.debug(`[meta-insights] IG media unavailable (${mediaRes.status}) — skipping`);
     return [];
   }
 
   const mediaData = await mediaRes.json() as {
-    data: { id: string; timestamp: string; media_type: string }[];
+    data: { id: string; timestamp: string; media_type: string; media_product_type?: string; caption?: string }[];
   };
 
-  // For each media, fetch insights (parallel, capped)
-  const items = (mediaData.data ?? []).slice(0, 25);
-  const insightCalls = items.map(async m => {
-    const metrics = m.media_type === "VIDEO" || m.media_type === "REELS"
-      ? "reach,impressions,saved,likes,comments,shares,plays"
+  // Reels don't support `impressions` — use total_interactions instead
+  const insightCalls = (mediaData.data ?? []).slice(0, 25).map(async m => {
+    const isReel = m.media_product_type === "REELS" || m.media_product_type === "REEL";
+    const metrics = isReel
+      ? "reach,saved,likes,comments,shares,total_interactions,ig_reels_avg_watch_time"
       : "reach,impressions,saved,likes,comments,shares";
     try {
       const insightRes = await fetch(`${GRAPH_BASE}/${m.id}/insights?metric=${metrics}&access_token=${token}`, {
@@ -176,7 +175,8 @@ async function fetchInstagramPostInsights(igId: string, token: string): Promise<
       const comments = map.comments ?? 0;
       const shares = map.shares ?? 0;
       const saves = map.saved ?? 0;
-      const engagement = likes + comments + shares + saves;
+      // total_interactions from Reels is more accurate; fall back to sum for other types
+      const engagement = isReel ? (map.total_interactions ?? likes + comments + shares + saves) : likes + comments + shares + saves;
       return {
         postId: m.id,
         platform: "instagram" as const,
@@ -190,6 +190,8 @@ async function fetchInstagramPostInsights(igId: string, token: string): Promise<
         shares,
         saves,
         engagementRate: reach > 0 ? engagement / reach : 0,
+        avgWatchTime: isReel && map.ig_reels_avg_watch_time ? map.ig_reels_avg_watch_time : undefined,
+        caption: m.caption || undefined,
       } satisfies PostInsight;
     } catch {
       return null;

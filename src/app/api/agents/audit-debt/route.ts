@@ -4,7 +4,7 @@ export const dynamic = "force-dynamic";
 // Scans src/ for TODO/FIXME/placeholder debt and TS errors; reports top items.
 
 import { execSync } from "child_process";
-import { verifyCronSecret, cronUnauthorized } from "@/lib/cron-auth";
+import { verifyCronSecret, verifyCronOrInternal, cronUnauthorized } from "@/lib/cron-auth";
 import { prisma } from "@/lib/prisma";
 import { logError } from "@/lib/error-memory";
 
@@ -184,7 +184,8 @@ export async function POST(request: Request) {
   }
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  if (!verifyCronOrInternal(request)) return cronUnauthorized();
   try {
     return await runAuditDebt();
   } catch (err) {

@@ -1,13 +1,59 @@
 export const dynamic = "force-dynamic";
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { fetchSaleListings, type SaleListing } from "@/lib/rentcast";
 
-// Paragon MLS integration
-// Real data: configure PARAGON_API_URL + PARAGON_API_KEY in .env
-// Falls back to curated demo data so the UI always has something to show
+// Listings source priority:
+//   1. RentCast — licensed, commercial-legal API (RENTCAST_API_KEY). PRIMARY.
+//   2. Paragon MLS — only if PARAGON_API_URL + PARAGON_API_KEY are set (dormant;
+//      Caleb is not currently authorized on the GBRAR feed). Kept as a seam.
+//   3. Curated demo data — so the UI always has something to show.
+//
+// RentCast is city-based (not county-based like Paragon), so we query Caleb's
+// core markets and merge. Add cities here as the territory grows.
+const RENTCAST_CITIES: Array<{ city: string; state: string }> = [
+  { city: "Baton Rouge", state: "LA" },
+  { city: "New Roads", state: "LA" }, // False River / Pointe Coupee
+];
 
 const PARAGON_API_URL = process.env.PARAGON_API_URL || "";
 const PARAGON_API_KEY = process.env.PARAGON_API_KEY || "";
+
+// Map a RentCast SaleListing into the shape the board/buyer-match expects.
+function mapRentcastListing(l: SaleListing) {
+  return {
+    mlsNumber: l.mlsNumber || l.id,
+    address: l.address,
+    city: l.city,
+    price: l.price ?? 0,
+    beds: l.beds ?? 0,
+    baths: l.baths ?? 0,
+    sqft: l.sqft ?? 0,
+    dom: l.daysOnMarket ?? 0,
+    // Fresh listings (<= 2 days) get the "New" badge; older stay "Active".
+    status: ((l.daysOnMarket ?? 99) <= 2 ? "New" : "Active") as "New" | "Active",
+    photoUrl: undefined as string | undefined, // RentCast doesn't return media
+    listingUrl: undefined as string | undefined, // nor a public listing URL
+    listedAt: l.listedDate ?? new Date().toISOString(),
+  };
+}
+
+async function fetchRentcastListings() {
+  if (!process.env.RENTCAST_API_KEY) return null;
+  try {
+    const perCity = await Promise.all(
+      RENTCAST_CITIES.map(({ city, state }) =>
+        fetchSaleListings(city, state, { limit: 25 }).catch(() => [] as SaleListing[])
+      )
+    );
+    const merged = perCity.flat().map(mapRentcastListing);
+    // Newest first
+    merged.sort((a, b) => new Date(b.listedAt).getTime() - new Date(a.listedAt).getTime());
+    return merged.length > 0 ? merged : null;
+  } catch {
+    return null;
+  }
+}
 
 async function fetchParagonListings() {
   if (!PARAGON_API_URL || !PARAGON_API_KEY) return null;
@@ -59,14 +105,19 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const fresh = searchParams.get("fresh") === "1";
 
-  // Try real Paragon data first
+  // 1. RentCast — primary, licensed source
+  const rentcastData = await fetchRentcastListings();
+  if (rentcastData && rentcastData.length > 0) {
+    const listings = rentcastData.slice(0, 30);
+    await checkBuyerMatches(listings);
+    return Response.json({ listings, source: "rentcast", count: listings.length });
+  }
+
+  // 2. Paragon — dormant seam (only if authorized + configured)
   const paragonData = await fetchParagonListings();
   if (paragonData && Array.isArray(paragonData) && paragonData.length > 0) {
     const listings = paragonData.slice(0, 30).map(mapParagonListing);
-
-    // Check buyer search matches and create alerts
     await checkBuyerMatches(listings);
-
     return Response.json({ listings, source: "paragon", count: listings.length });
   }
 
@@ -128,7 +179,18 @@ export async function GET(request: NextRequest) {
   return Response.json({ listings: demoListings, source: "demo", count: demoListings.length });
 }
 
-async function checkBuyerMatches(listings: ReturnType<typeof mapParagonListing>[]) {
+// Common shape across all sources — only the fields buyer-matching needs.
+type MatchableListing = {
+  mlsNumber: string;
+  address: string;
+  price: number;
+  beds: number;
+  baths: number;
+  sqft: number;
+  listingUrl?: string;
+};
+
+async function checkBuyerMatches(listings: MatchableListing[]) {
   try {
     const searches = await prisma.buyerSearch.findMany({
       where: { active: true },

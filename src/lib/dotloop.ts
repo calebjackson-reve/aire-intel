@@ -5,11 +5,11 @@ import { withRetry } from "./error-memory";
  * Dotloop v2 API integration.
  *
  * API root:   https://api-gateway.dotloop.com/public/v2
- * Auth:       Bearer token (Personal Access Token from dotloop.com → Account → Integrations)
- *
- * For Rêve Realtors users: API access may require the broker admin to enable
- * "API access" on your profile in Dotloop's admin console. If you get a 401
- * with "no developer access" in the message, that's why.
+ * Auth:       OAuth 2.0 (3-legged auth-code flow). There are NO Personal Access
+ *             Tokens. Register an app at info.dotloop.com/developers (~5-7 biz
+ *             days) for a client_id/secret, then run scripts/dotloop-auth.mjs
+ *             once to get a refresh token. See getDotloopConfig() below.
+ *             Scopes: loop:read (folders/documents/details) + loop:write (upload).
  *
  * Endpoints we use:
  *   GET /profile                               → list profiles for current user
@@ -21,6 +21,7 @@ import { withRetry } from "./error-memory";
  */
 
 const DOTLOOP_BASE = "https://api-gateway.dotloop.com/public/v2";
+const DOTLOOP_AUTH_BASE = "https://auth.dotloop.com/oauth";
 
 // ─── Settings glue ───────────────────────────────────────────────────────────
 
@@ -29,17 +30,135 @@ async function getSetting(key: string): Promise<string | null> {
   return row?.value || process.env[key] || null;
 }
 
+async function setSetting(key: string, value: string): Promise<void> {
+  await prisma.setting
+    .upsert({ where: { key }, update: { value }, create: { key, value } })
+    .catch(() => null);
+}
+
 export interface DotloopConfig {
   accessToken: string;
   profileId: string;
 }
 
+/**
+ * Dotloop v2 is OAuth 2.0 only (3-legged auth-code flow) — there are NO
+ * Personal Access Tokens. Register an app at info.dotloop.com/developers to get
+ * DOTLOOP_CLIENT_ID + DOTLOOP_CLIENT_SECRET, then run the one-time auth flow
+ * (scripts/dotloop-auth.mjs) to obtain a refresh token. Access tokens last 12h
+ * and are refreshed + cached here, mirroring the Lofty integration.
+ *
+ * Resolution order:
+ *   1. DOTLOOP_ACCESS_TOKEN set directly  → use as-is (manual / testing override)
+ *   2. client_id + client_secret + refresh_token → refresh into a 12h access token
+ * Profile id: DOTLOOP_PROFILE_ID, else the default profile from /profile.
+ */
+
+let _tokenCache: { accessToken: string; expiresAt: number } | null = null;
+
+interface TokenResponse {
+  access_token: string;
+  refresh_token?: string;
+  expires_in?: number; // seconds
+  token_type?: string;
+}
+
+function basicAuthHeader(clientId: string, clientSecret: string): string {
+  return "Basic " + Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
+}
+
+/**
+ * Exchange a refresh token for a fresh access token. Persists a rotated refresh
+ * token back to Settings if dotloop returns one.
+ */
+async function refreshAccessToken(
+  clientId: string,
+  clientSecret: string,
+  refreshToken: string,
+): Promise<string> {
+  const now = Date.now();
+  if (_tokenCache && _tokenCache.expiresAt > now + 60_000) return _tokenCache.accessToken;
+
+  const body = new URLSearchParams({ grant_type: "refresh_token", refresh_token: refreshToken });
+  const res = await fetch(`${DOTLOOP_AUTH_BASE}/token`, {
+    method: "POST",
+    headers: {
+      Authorization: basicAuthHeader(clientId, clientSecret),
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body,
+    signal: AbortSignal.timeout(15_000),
+  });
+  if (!res.ok) {
+    const t = await res.text().catch(() => "");
+    throw new Error(`Dotloop token refresh ${res.status}: ${t.slice(0, 200) || res.statusText}`);
+  }
+  const data = (await res.json()) as TokenResponse;
+  _tokenCache = { accessToken: data.access_token, expiresAt: now + (data.expires_in ?? 43_200) * 1000 };
+  if (data.refresh_token && data.refresh_token !== refreshToken) {
+    await setSetting("DOTLOOP_REFRESH_TOKEN", data.refresh_token);
+  }
+  return data.access_token;
+}
+
+/**
+ * One-time: exchange an OAuth authorization code (from the consent redirect) for
+ * the initial access + refresh tokens. Used by scripts/dotloop-auth.mjs.
+ */
+export async function exchangeCodeForTokens(
+  clientId: string,
+  clientSecret: string,
+  code: string,
+  redirectUri: string,
+): Promise<TokenResponse> {
+  const body = new URLSearchParams({
+    grant_type: "authorization_code",
+    code,
+    redirect_uri: redirectUri,
+  });
+  const res = await fetch(`${DOTLOOP_AUTH_BASE}/token`, {
+    method: "POST",
+    headers: {
+      Authorization: basicAuthHeader(clientId, clientSecret),
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body,
+    signal: AbortSignal.timeout(15_000),
+  });
+  if (!res.ok) {
+    const t = await res.text().catch(() => "");
+    throw new Error(`Dotloop code exchange ${res.status}: ${t.slice(0, 200) || res.statusText}`);
+  }
+  return (await res.json()) as TokenResponse;
+}
+
 export async function getDotloopConfig(): Promise<DotloopConfig | null> {
-  const [accessToken, profileId] = await Promise.all([
+  const [direct, clientId, clientSecret, refreshToken, profileIdSetting] = await Promise.all([
     getSetting("DOTLOOP_ACCESS_TOKEN"),
+    getSetting("DOTLOOP_CLIENT_ID"),
+    getSetting("DOTLOOP_CLIENT_SECRET"),
+    getSetting("DOTLOOP_REFRESH_TOKEN"),
     getSetting("DOTLOOP_PROFILE_ID"),
   ]);
-  if (!accessToken || !profileId) return null;
+
+  let accessToken: string | null = direct;
+  if (!accessToken && clientId && clientSecret && refreshToken) {
+    accessToken = await refreshAccessToken(clientId, clientSecret, refreshToken);
+  }
+  if (!accessToken) return null;
+
+  // Resolve profile id: explicit setting, else the default profile.
+  let profileId = profileIdSetting;
+  if (!profileId) {
+    const profiles = await fetchProfiles(accessToken).catch(() => [] as DotloopProfile[]);
+    const def = profiles.find((p) => p.default) ?? profiles[0];
+    if (def) {
+      profileId = String(def.id);
+      await setSetting("DOTLOOP_PROFILE_ID", profileId);
+    }
+  }
+  if (!profileId) return null;
+
   return { accessToken, profileId };
 }
 
@@ -250,6 +369,198 @@ export function summarizeDocs(folders: LoopFolder[]): { signed: number; pending:
     }
   }
   return { signed, pending, total: signed + pending };
+}
+
+/**
+ * Normalized, flattened view of a loop's documents — one row per document with
+ * its folder, signed status, and id. Used by the MCP connector and the
+ * compliance reconciler. Wrapped in withRetry; returns null if not configured.
+ *
+ * AIRE: loop:compliance-sweep
+ */
+export interface LoopDocument {
+  documentId: number;
+  documentName: string;
+  folderId: number;
+  folderName: string;
+  signed: boolean;
+}
+
+export async function getLoopDocuments(loopId: string | number): Promise<LoopDocument[] | null> {
+  const config = await getDotloopConfig();
+  if (!config) return null;
+  const folders = await withRetry(
+    () => fetchLoopFolders(config, loopId),
+    { source: "dotloop.getLoopDocuments", type: "dotloop", context: { loopId } },
+  );
+  const docs: LoopDocument[] = [];
+  for (const f of folders) {
+    for (const d of f.documents ?? []) {
+      docs.push({
+        documentId: d.id,
+        documentName: d.name,
+        folderId: f.id,
+        folderName: f.name,
+        signed: Boolean(d.signed),
+      });
+    }
+  }
+  return docs;
+}
+
+// ─── Document upload ───────────────────────────────────────────────────────
+// AIRE: loop:compliance-sweep
+
+export interface UploadResult {
+  documentId?: number;
+  name: string;
+  folderId: number;
+}
+
+/**
+ * Upload a single PDF into a loop folder.
+ * Dotloop v2:  POST /profile/{profileId}/loop/{loopId}/folder/{folderId}/document
+ *              multipart/form-data with a `file` part.
+ *
+ * `content` is the raw file bytes (Buffer/Uint8Array) — when called from the
+ * MCP connector the caller passes a base64 payload it decodes first.
+ * Uses a 60s timeout (PDFs are multi-MB) instead of dotloopFetch's 15s, and
+ * wraps in withRetry with the standard "dotloop" error type.
+ */
+export async function uploadDocument(
+  loopId: string | number,
+  folderId: string | number,
+  content: Uint8Array,
+  name: string,
+): Promise<UploadResult> {
+  const config = await getDotloopConfig();
+  if (!config) throw new Error("Dotloop is not configured (missing DOTLOOP_ACCESS_TOKEN / DOTLOOP_PROFILE_ID).");
+
+  const fileName = name.toLowerCase().endsWith(".pdf") ? name : `${name}.pdf`;
+
+  return withRetry(
+    async () => {
+      const form = new FormData();
+      // Blob from the raw bytes; dotloop infers PDF from filename + content-type.
+      form.append("file", new Blob([content as BlobPart], { type: "application/pdf" }), fileName);
+
+      const res = await fetch(
+        `${DOTLOOP_BASE}/profile/${config.profileId}/loop/${loopId}/folder/${folderId}/document`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${config.accessToken}`,
+            Accept: "application/json",
+            // NOTE: do not set Content-Type — fetch sets the multipart boundary.
+          },
+          body: form,
+          signal: AbortSignal.timeout(60_000),
+        },
+      );
+
+      if (!res.ok) {
+        const body = await res.text().catch(() => "");
+        throw new Error(`Dotloop upload ${res.status}: ${body.slice(0, 200) || res.statusText}`);
+      }
+      const data = (await res.json().catch(() => ({}))) as { data?: { id?: number } };
+      return { documentId: data.data?.id, name: fileName, folderId: Number(folderId) };
+    },
+    { source: "dotloop.uploadDocument", type: "dotloop", context: { loopId, folderId, name: fileName } },
+  );
+}
+
+// ─── Compliance reconciliation ───────────────────────────────────────────────
+// AIRE: loop:compliance-sweep
+//
+// Required-document templates per transaction side, mirrored from the dotloop
+// loop checklists. Each slot has match keywords (lowercased, OR-matched against
+// document names) so we can detect whether a slot is filled. Keep in sync with
+// ~/.claude/skills/transaction-compliance/references/dotloop-slots.md
+
+export type LoopSide = "LISTING" | "PURCHASE";
+
+interface RequiredSlot {
+  slot: string;
+  keywords: string[];
+  optional?: boolean;
+}
+
+export const REQUIRED_DOCS: Record<LoopSide, RequiredSlot[]> = {
+  LISTING: [
+    { slot: "Listing Agreement", keywords: ["listing agreement"] },
+    { slot: "Agency Disclosure", keywords: ["agency disclosure"] },
+    { slot: "Waiver of Warranty", keywords: ["waiver of warranty", "waiver as is"], optional: true },
+    { slot: "Lead-Based Paint Disclosure (LREC)", keywords: ["lead-based paint", "lead based paint", "lead paint"] },
+    { slot: "2026 Property Disclosure", keywords: ["property disclosure", "2026 property disclosure"] },
+    { slot: "Residential Sewerage Disclosure", keywords: ["sewerage", "residential sewerage"], optional: true },
+    { slot: "MLS Copy", keywords: ["mls"], optional: true },
+  ],
+  PURCHASE: [
+    { slot: "Residential Agreement to Buy or Sell", keywords: ["agreement to buy or sell", "purchase agreement", "buy or sell"] },
+    { slot: "Property Disclosure", keywords: ["property disclosure"] },
+    { slot: "Lead Paint Disclosure", keywords: ["lead-based paint", "lead based paint", "lead paint"] },
+    { slot: "Lead Based Paint Pamphlet", keywords: ["pamphlet"] },
+    { slot: "Inspections & Due Diligence", keywords: ["inspection", "due diligence"] },
+    { slot: "Agency Disclosure", keywords: ["agency disclosure"] },
+    { slot: "MLS Sheet", keywords: ["mls"] },
+    { slot: "Copy of Deposit Check or Wire", keywords: ["deposit", "wire"] },
+    { slot: "Executed BBA", keywords: ["bba", "buyer brokerage", "buyer's brokerage"] },
+    { slot: "LRA General Addendum", keywords: ["general addendum", "lra"], optional: true },
+    { slot: "Counteroffer", keywords: ["counter"], optional: true },
+  ],
+};
+
+export const CLOSING_DOCS: RequiredSlot[] = [
+  { slot: "Closing Information", keywords: ["closing information"] },
+  { slot: "CD or HUD", keywords: ["closing disclosure", "cd or hud", "hud"] },
+  { slot: "Copy of Commission Check", keywords: ["commission"] },
+  { slot: "Signed Act of Sale / Cash Sale", keywords: ["act of sale", "cash sale"] },
+  { slot: "Final Settlement Statement (ALTA)", keywords: ["settlement statement", "alta"] },
+];
+
+export interface ComplianceStatus {
+  loopId: string;
+  side: LoopSide;
+  filed: { slot: string; documentName: string; signed: boolean }[];
+  missing: string[];        // required slots with no matching document
+  unexecuted: string[];     // matched but not signed (fails both-signature gate)
+  optionalMissing: string[];
+}
+
+/**
+ * Reconcile a loop's current documents against the required-doc template for
+ * its side (plus closing docs). Returns filed / missing / unexecuted so callers
+ * can decide what still needs uploading and what fails the both-signature gate.
+ */
+export async function getLoopComplianceStatus(
+  loopId: string | number,
+  side: LoopSide,
+): Promise<ComplianceStatus | null> {
+  const docs = await getLoopDocuments(loopId);
+  if (docs === null) return null;
+
+  const slots = [...REQUIRED_DOCS[side], ...CLOSING_DOCS];
+  const filed: ComplianceStatus["filed"] = [];
+  const missing: string[] = [];
+  const unexecuted: string[] = [];
+  const optionalMissing: string[] = [];
+
+  for (const req of slots) {
+    const match = docs.find((d) => {
+      const lname = d.documentName.toLowerCase();
+      return req.keywords.some((k) => lname.includes(k));
+    });
+    if (!match) {
+      if (req.optional) optionalMissing.push(req.slot);
+      else missing.push(req.slot);
+      continue;
+    }
+    filed.push({ slot: req.slot, documentName: match.documentName, signed: match.signed });
+    // Disclosures/agreements/closing docs must be signed to satisfy the gate.
+    if (!match.signed) unexecuted.push(req.slot);
+  }
+
+  return { loopId: String(loopId), side, filed, missing, unexecuted, optionalMissing };
 }
 
 // ─── Lead matching ───────────────────────────────────────────────────────────

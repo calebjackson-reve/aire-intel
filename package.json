@@ -9,6 +9,10 @@
     "lint": "eslint",
     "postinstall": "prisma generate",
     "migrate:data": "node scripts/migrate-sqlite-to-postgres.mjs",
+    "llm:build-model": "node infra/ollama/build-model.mjs",
+    "llm:build-rag": "node scripts/build-loop-rag.mjs",
+    "llm:eval": "node --env-file=.env scripts/llm-eval.mjs",
+    "llm:setup": "node infra/ollama/build-model.mjs && node scripts/build-loop-rag.mjs",
     "test": "jest --passWithNoTests",
     "test:coverage": "jest --coverage --passWithNoTests --coverageReporters=json-summary text"
   },
@@ -18,13 +22,16 @@
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "@prisma/adapter-better-sqlite3": "^7.8.0",
     "@prisma/adapter-pg": "^7.8.0",
     "@prisma/client": "^7.8.0",
     "@resvg/resvg-js": "^2.6.2",
+    "@types/adm-zip": "^0.5.8",
     "@types/papaparse": "^5.5.2",
     "@types/pg": "^8.20.0",
     "@vercel/blob": "^2.4.0",
+    "adm-zip": "^0.5.18",
     "better-sqlite3": "^12.10.0",
     "lucide-react": "^1.17.0",
     "next": "16.2.6",
@@ -35,7 +42,8 @@
     "react-dom": "19.2.4",
     "recharts": "^3.8.1",
     "satori": "^0.26.0",
-    "web-push": "^3.6.7"
+    "web-push": "^3.6.7",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
@@ -50,8 +58,10 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.6",
     "jest": "^30.4.2",
+    "playwright": "^1.60.0",
     "tailwindcss": "^4",
     "ts-jest": "^29.4.11",
+    "tsx": "^4.22.4",
     "typescript": "^5"
   }
 }

@@ -205,7 +205,7 @@ Return ONLY this JSON, no other text:
 
   try {
     const response = await getClient().messages.create({
-      model: "claude-fable-5",
+      model: "claude-opus-4-8",
       max_tokens: 2000,
       system: [
         {

@@ -5,7 +5,7 @@ export const dynamic = "force-dynamic";
 import { execSync } from "child_process";
 import { readFileSync, writeFileSync } from "fs";
 import path from "path";
-import { verifyCronSecret, cronUnauthorized } from "@/lib/cron-auth";
+import { verifyCronSecret, verifyCronOrInternal, cronUnauthorized } from "@/lib/cron-auth";
 import { prisma } from "@/lib/prisma";
 import { logError, detectPatterns, getHealthScore } from "@/lib/error-memory";
 import { getSetting, invalidateSettingsCache } from "@/lib/settings";
@@ -318,7 +318,8 @@ export async function POST(request: Request) {
   }
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  if (!verifyCronOrInternal(request)) return cronUnauthorized();
   try {
     return await runAutofix();
   } catch (err) {

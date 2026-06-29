@@ -96,15 +96,32 @@ export default function CommandPalette() {
     setOpen(false);
   }, [router]);
 
+  function sendToAire(query: string) {
+    setOpen(false);
+    window.dispatchEvent(new CustomEvent("aire:chat-query", { detail: { text: query } }));
+  }
+
+  const showAireOption = q.trim().length > 2 && !loading;
+  const totalItems = allItems.length + (showAireOption ? 1 : 0);
+
   function onKeyDown(e: React.KeyboardEvent) {
     if (e.key === "ArrowDown") {
       e.preventDefault();
-      setSelected(s => Math.min(s + 1, allItems.length - 1));
+      setSelected(s => Math.min(s + 1, totalItems - 1));
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
       setSelected(s => Math.max(s - 1, 0));
     } else if (e.key === "Enter") {
       e.preventDefault();
+      // If AIRE option is selected (last item) or no contacts found, send to AIRE
+      if (selected === allItems.length && showAireOption) {
+        sendToAire(q);
+        return;
+      }
+      if (q.trim() && contacts.length === 0 && !loading) {
+        sendToAire(q);
+        return;
+      }
       const item = allItems[selected];
       if (!item) return;
       if (item.type === "contact") navigate(`/contacts?selected=${item.contact.id}`);
@@ -135,7 +152,7 @@ export default function CommandPalette() {
             value={q}
             onChange={e => { setQ(e.target.value); setSelected(0); }}
             onKeyDown={onKeyDown}
-            placeholder="Search contacts or jump to page…"
+            placeholder="Search contacts, jump to page, or ask AIRE anything…"
             style={{
               flex: 1,
               background: "transparent",
@@ -171,8 +188,8 @@ export default function CommandPalette() {
             </div>
           )}
           {q.trim() && !loading && contacts.length === 0 && (
-            <div style={{ padding: "24px", fontSize: "13px", color: "var(--aire-muted)", textAlign: "center" }}>
-              No contacts found for &quot;{q}&quot;
+            <div style={{ padding: "12px 16px 4px", fontSize: "12px", color: "var(--aire-muted)", textAlign: "center" }}>
+              No contacts found — press ↵ to ask AIRE
             </div>
           )}
 
@@ -248,6 +265,37 @@ export default function CommandPalette() {
               </div>
             );
           })}
+
+          {/* Ask AIRE row — always shown when there's a query */}
+          {showAireOption && (
+            <div
+              onClick={() => sendToAire(q)}
+              onMouseEnter={() => setSelected(allItems.length)}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "10px",
+                padding: "11px 16px",
+                cursor: "pointer",
+                background: selected === allItems.length ? "rgba(238,129,114,0.08)" : "transparent",
+                borderLeft: selected === allItems.length ? "2px solid #EE8172" : "2px solid transparent",
+                borderTop: "1px solid var(--aire-border)",
+                transition: "background 100ms",
+              }}
+            >
+              <span style={{
+                fontSize: "13px",
+                color: "#EE8172",
+                fontWeight: 600,
+                flexShrink: 0,
+              }}>✦</span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <span style={{ fontSize: "13px", color: "var(--aire-text)" }}>Ask AIRE: </span>
+                <span style={{ fontSize: "13px", color: "var(--aire-muted)", fontStyle: "italic" }}>&ldquo;{q}&rdquo;</span>
+              </div>
+              <span style={{ fontSize: "10px", color: "var(--aire-muted)", background: "var(--aire-card)", border: "1px solid var(--aire-border)", borderRadius: "5px", padding: "2px 6px", flexShrink: 0 }}>↵</span>
+            </div>
+          )}
         </div>
 
         {/* Footer */}

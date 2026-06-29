@@ -1,5 +1,6 @@
 export const dynamic = "force-dynamic";
-import { verifyCronSecret, cronUnauthorized } from "@/lib/cron-auth";
+export const maxDuration = 300;
+import { verifyCronSecret, verifyCronOrInternal, cronUnauthorized } from "@/lib/cron-auth";
 import { startRun, finishRun, failRun } from "@/lib/agent-run";
 import { assembleBrief } from "@/lib/brief-assembler";
 import { deliverBrief } from "@/lib/brief-delivery";
@@ -18,7 +19,8 @@ export async function POST(request: Request) {
   return runMorningBrief();
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  if (!verifyCronOrInternal(request)) return cronUnauthorized();
   return runMorningBrief();
 }
 

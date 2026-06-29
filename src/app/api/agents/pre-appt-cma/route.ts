@@ -4,7 +4,7 @@ export const dynamic = "force-dynamic";
 // Cron: 0 11 * * * — Scans Google Calendar for appointments in the next 8 hours,
 // matches them to leads, and generates a CMA brief for each matched lead with an address.
 
-import { verifyCronSecret, cronUnauthorized } from "@/lib/cron-auth";
+import { verifyCronSecret, verifyCronOrInternal, cronUnauthorized } from "@/lib/cron-auth";
 import { startRun, finishRun, failRun } from "@/lib/agent-run";
 import { prisma } from "@/lib/prisma";
 import { fetchUpcomingEvents } from "@/lib/google-calendar";
@@ -21,7 +21,8 @@ export async function POST(request: Request) {
   return runPreApptCMA();
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  if (!verifyCronOrInternal(request)) return cronUnauthorized();
   return runPreApptCMA();
 }
 

@@ -1,11 +1,13 @@
 export const dynamic = "force-dynamic";
 import { NextRequest } from "next/server";
-import Anthropic from "@anthropic-ai/sdk";
 import { prisma } from "@/lib/prisma";
 import { REVE_PIPELINE_SYSTEM } from "@/lib/reve-system-prompt";
 import { renderTemplate } from "@/lib/followup-templates";
+import { getLLM } from "@/lib/llm";
 
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+// Hybrid router: haiku-tier batch follow-ups run locally when enabled, with
+// automatic cloud fallback (the template fallback below still applies on top).
+const client = getLLM();
 
 // Detect specific error classes we want to surface differently to the user
 function classifyAnthropicError(err: unknown): "credit_low" | "rate_limited" | "auth" | "network" | "other" {

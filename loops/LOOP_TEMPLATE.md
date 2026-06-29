@@ -42,6 +42,17 @@ _(e.g. "reply rate ≥ 12%", "0 new errors of this type in 24h", "CI green")_
 **Rejection signal:**  
 _(what causes this loop to halt, rollback, or escalate?)_
 
+## Quality Gate
+
+**Output type:** post | reel_hook | carousel_slide | caption | n/a  
+**Score threshold:** ≥ NN / 100 (Setting: `content.gate.{type}.minScore`)  
+**Max retries:** N (Setting: `content.gate.maxAttempts`)  
+**Escalation prompt:** _what gets injected on retry — specific to failed flags_  
+**Gate behavior:** surface_best_after_max _(never surface_always)_  
+**Verifier:** scorePost() / scoreReelHook() / scoreCarouselSlide() — must NOT be the generating model  
+
+_For non-content loops:_ **Output type:** n/a — oracle is external data, not AI-generated text
+
 ## Memory
 
 How does this loop persist state between runs?  

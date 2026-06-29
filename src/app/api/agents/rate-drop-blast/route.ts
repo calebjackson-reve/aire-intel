@@ -4,7 +4,7 @@ export const dynamic = "force-dynamic";
 // Cron: 0 12 * * * — Checks FRED mortgage rates daily. If rates drop >= 0.125%,
 // queues follow_up_text ActionQueue items for qualified leads (pending Caleb approval).
 
-import { verifyCronSecret, cronUnauthorized } from "@/lib/cron-auth";
+import { verifyCronSecret, verifyCronOrInternal, cronUnauthorized } from "@/lib/cron-auth";
 import { startRun, finishRun, failRun } from "@/lib/agent-run";
 import { prisma } from "@/lib/prisma";
 import { getMortgageRate } from "@/lib/housing-intel";
@@ -22,7 +22,8 @@ export async function POST(request: Request) {
   return runRateDropBlast();
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  if (!verifyCronOrInternal(request)) return cronUnauthorized();
   return runRateDropBlast();
 }
 

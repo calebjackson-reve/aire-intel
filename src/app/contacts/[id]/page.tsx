@@ -169,6 +169,10 @@ export default function ContactProfile() {
   const [loftyToast, setLoftyToast] = useState<string | null>(null);
 
 
+  // Skip trace
+  const [skipping, setSkipping] = useState(false);
+  const [skipResult, setSkipResult] = useState<{ phones?: Array<{number:string;type:string;confidence:number;doNotCall:boolean}>; emails?: Array<{email:string;confidence:number}>; currentAddress?: string|null; error?: string; code?: string } | null>(null);
+
   // LinkedIn outreach panel
   const [showLinkedIn, setShowLinkedIn] = useState(false);
   const [liOutreach, setLiOutreach] = useState<OutreachRecord[]>([]);
@@ -384,6 +388,25 @@ export default function ContactProfile() {
     router.push("/contacts");
   }
 
+  async function runSkipTrace() {
+    setSkipping(true);
+    setSkipResult(null);
+    try {
+      const res = await fetch(`/api/contacts/${id}/skip-trace`, { method: "POST" });
+      const data = await res.json();
+      setSkipResult(data);
+      // If phone/email was updated, refresh lead
+      if (data.updated) {
+        const fresh = await fetch(`/api/contacts/${id}`).then(r => r.json());
+        setLead(fresh);
+      }
+    } catch {
+      setSkipResult({ error: "Skip trace request failed" });
+    } finally {
+      setSkipping(false);
+    }
+  }
+
   if (loading) {
     return (
       <div style={{ padding: "80px 40px", textAlign: "center", color: "var(--aire-muted)", fontSize: "13px", letterSpacing: "0.14em" }}>
@@ -495,6 +518,15 @@ export default function ContactProfile() {
             ✦ TOUCH
           </button>
           <button
+            onClick={runSkipTrace}
+            disabled={skipping}
+            className="btn-ghost"
+            style={{ fontSize: "11px", letterSpacing: "0.14em", padding: "10px 18px", opacity: skipping ? 0.5 : 1 }}
+            title="Find phone/email via BatchData skip trace"
+          >
+            {skipping ? "TRACING..." : "SKIP TRACE"}
+          </button>
+          <button
             onClick={() => { setEditing(true); setEditData(lead); }}
             className="btn-ghost"
             style={{ fontSize: "11px", letterSpacing: "0.14em", padding: "10px 18px" }}
@@ -536,6 +568,54 @@ export default function ContactProfile() {
           )}
         </div>
       </div>
+
+      {/* ── Skip Trace Result Banner ── */}
+      {skipResult && (
+        <div style={{
+          margin: "0 24px 16px",
+          padding: "14px 18px",
+          borderRadius: 12,
+          border: `1px solid ${skipResult.error ? "var(--aire-coral)" : "var(--aire-green)"}`,
+          background: skipResult.error ? "rgba(238,129,114,0.06)" : "rgba(74,222,128,0.06)",
+          fontSize: 12, fontFamily: "var(--font-sans-app)",
+          display: "flex", flexDirection: "column", gap: 6,
+        }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span style={{ fontWeight: 700, letterSpacing: "0.08em", color: skipResult.error ? "var(--aire-coral-deep)" : "var(--aire-green-deep)", fontSize: 11 }}>
+              {skipResult.error ? "SKIP TRACE FAILED" : "SKIP TRACE RESULTS"}
+            </span>
+            <button onClick={() => setSkipResult(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--aire-muted)", fontSize: 14 }}>✕</button>
+          </div>
+          {skipResult.error ? (
+            <span style={{ color: "var(--aire-text-2)" }}>
+              {skipResult.code === "NO_CREDITS" ? "No BatchData credits — add funds at app.batchdata.com" : skipResult.error}
+            </span>
+          ) : (
+            <>
+              {(skipResult.phones?.length ?? 0) > 0 && (
+                <div style={{ color: "var(--aire-text-2)" }}>
+                  <b style={{ color: "var(--aire-text)" }}>Phones: </b>
+                  {skipResult.phones!.map(p => `${p.number} (${p.type}, ${p.confidence}% conf${p.doNotCall ? ", DNC" : ""})`).join(" · ")}
+                </div>
+              )}
+              {(skipResult.emails?.length ?? 0) > 0 && (
+                <div style={{ color: "var(--aire-text-2)" }}>
+                  <b style={{ color: "var(--aire-text)" }}>Emails: </b>
+                  {skipResult.emails!.map(e => `${e.email} (${e.confidence}%)`).join(" · ")}
+                </div>
+              )}
+              {skipResult.currentAddress && (
+                <div style={{ color: "var(--aire-text-2)" }}>
+                  <b style={{ color: "var(--aire-text)" }}>Address: </b>{skipResult.currentAddress}
+                </div>
+              )}
+              {(skipResult.phones?.length ?? 0) === 0 && (skipResult.emails?.length ?? 0) === 0 && !skipResult.currentAddress && (
+                <span style={{ color: "var(--aire-muted)" }}>No results found for this contact.</span>
+              )}
+            </>
+          )}
+        </div>
+      )}
 
       {/* ── Touch Composer — unified channel send + AI suggest ── */}
       <div ref={composerRef}>

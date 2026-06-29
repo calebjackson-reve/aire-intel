@@ -1,7 +1,8 @@
 export const dynamic = "force-dynamic";
+export const maxDuration = 120;
 import { prisma } from "@/lib/prisma";
 import { fetchViralListings, viralScore } from "@/lib/zillow";
-import { verifyCronSecret, cronUnauthorized } from "@/lib/cron-auth";
+import { verifyCronSecret, verifyCronOrInternal, cronUnauthorized } from "@/lib/cron-auth";
 import { startRun, finishRun, failRun } from "@/lib/agent-run";
 import { getTodayCT } from "@/lib/brief-date";
 import { matchListingToBuyers, type BuyerSearchWithLead } from "@/lib/buyer-matcher"; // AIRE: loop:listing-alert-buyer-match
@@ -24,7 +25,8 @@ export async function POST(request: Request) {
   return runMarketIntel();
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  if (!verifyCronOrInternal(request)) return cronUnauthorized();
   return runMarketIntel();
 }
 
@@ -381,7 +383,7 @@ async function generateViralCaption(listing: {
       "content-type": "application/json",
     },
     body: JSON.stringify({
-      model: "claude-fable-5",
+      model: "claude-opus-4-8",
       max_tokens: 150,
       messages: [
         {

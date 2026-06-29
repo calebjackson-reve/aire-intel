@@ -566,7 +566,7 @@ async function buildSmsSummary(sections: Omit<AssembledBrief, "date" | "smsSumma
       .join("\n");
 
     const response = await client.messages.create({
-      model: "claude-fable-5",
+      model: "claude-opus-4-8",
       max_tokens: 100,
       messages: [
         {

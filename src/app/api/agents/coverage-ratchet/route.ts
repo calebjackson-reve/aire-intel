@@ -4,7 +4,7 @@ export const dynamic = "force-dynamic";
 // Reads coverage data written by coverage-check.sh, compares to baseline,
 // updates Setting baseline on improvement, emits Notification on violation.
 
-import { verifyCronSecret, cronUnauthorized } from "@/lib/cron-auth";
+import { verifyCronSecret, verifyCronOrInternal, cronUnauthorized } from "@/lib/cron-auth";
 import { prisma } from "@/lib/prisma";
 import { logError } from "@/lib/error-memory";
 
@@ -19,7 +19,8 @@ export async function POST(request: Request) {
   return runCoverageRatchet();
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  if (!verifyCronOrInternal(request)) return cronUnauthorized();
   return runCoverageRatchet();
 }
 

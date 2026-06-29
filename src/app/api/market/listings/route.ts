@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 import { NextRequest } from "next/server";
 import { fetchActiveListings } from "@/lib/paragon";
-import { fetchViralListings, type ZillowProperty } from "@/lib/zillow";
+import { fetchSaleListings } from "@/lib/rentcast";
 import { logError } from "@/lib/error-memory";
 
 // Shape that the market page expects
@@ -21,30 +21,8 @@ interface Listing {
   mlsNumber: string;
   propertyType: string | null;
   listingAgent: string | null;
-  source: "paragon" | "zillow";
+  source: "paragon" | "rentcast";
   listingUrl?: string;
-}
-
-function zillowToListing(z: ZillowProperty): Listing {
-  return {
-    id: `zillow-${z.zpid}`,
-    address: z.address,
-    city: z.city,
-    state: z.state,
-    zip: z.zip,
-    price: z.price,
-    beds: z.beds,
-    baths: z.baths,
-    sqft: z.sqft,
-    status: "Active",
-    daysOnMarket: z.daysOnMarket,
-    photos: z.photoUrl ? [z.photoUrl] : [],
-    mlsNumber: z.zpid,
-    propertyType: null,
-    listingAgent: null,
-    source: "zillow",
-    listingUrl: z.listingUrl,
-  };
 }
 
 export async function GET(req: NextRequest) {
@@ -65,18 +43,17 @@ export async function GET(req: NextRequest) {
 
     let listings: Listing[] = paragonListings;
 
-    // If Paragon returned nothing, pull from Zillow RapidAPI (real photos guaranteed)
-    if (listings.length === 0 && process.env.ZILLOW_RAPIDAPI_KEY) {
+    // If Paragon returned nothing, pull from Rentcast (real MLS-sourced listings for Baton Rouge)
+    if (listings.length === 0 && process.env.RENTCAST_API_KEY) {
       try {
-        const zillowRaw = await fetchViralListings(limit);
-        let filtered = zillowRaw.map(zillowToListing);
-
-        if (minPrice) filtered = filtered.filter(l => l.price == null || l.price >= minPrice);
-        if (maxPrice) filtered = filtered.filter(l => l.price == null || l.price <= maxPrice);
-
-        listings = filtered.slice(0, limit);
-      } catch (zErr) {
-        logError("api_failure", "api/market/listings/zillow-fallback", zErr as Error);
+        const rcRaw = await fetchSaleListings("Baton Rouge", "LA", { limit, minPrice, maxPrice });
+        listings = rcRaw.map(r => ({
+          ...r,
+          photos: [],
+          source: "rentcast" as const,
+        }));
+      } catch (rcErr) {
+        logError("api_failure", "api/market/listings/rentcast-fallback", rcErr as Error);
       }
     }
 

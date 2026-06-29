@@ -4,7 +4,7 @@ export const dynamic = "force-dynamic";
 // Cron: 0 */2 * * * — Escalates unanswered messenger draft_message items via Twilio SMS to Caleb.
 // Checks ContactLog for manual replies before escalating. Idempotent per lead per 4h window.
 
-import { verifyCronSecret, cronUnauthorized } from "@/lib/cron-auth";
+import { verifyCronSecret, verifyCronOrInternal, cronUnauthorized } from "@/lib/cron-auth";
 import { startRun, finishRun, failRun } from "@/lib/agent-run";
 import { prisma } from "@/lib/prisma";
 import { getTwilioConfig, sendSMS, normalizePhone } from "@/lib/twilio";
@@ -21,7 +21,8 @@ export async function POST(request: Request) {
   return runMessengerMonitor();
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  if (!verifyCronOrInternal(request)) return cronUnauthorized();
   return runMessengerMonitor();
 }
 

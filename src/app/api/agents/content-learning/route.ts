@@ -3,7 +3,7 @@ export const dynamic = "force-dynamic";
 // Vercel cron: 0 5 * * 0 (Sunday 11PM CT = Monday 5AM UTC)
 // Pulls 30-day Meta engagement data, groups by content type, writes learning metrics to Settings.
 
-import { verifyCronSecret, cronUnauthorized } from "@/lib/cron-auth";
+import { verifyCronSecret, verifyCronOrInternal, cronUnauthorized } from "@/lib/cron-auth";
 import { withRetry, logError } from "@/lib/error-memory";
 import { invalidateSettingsCache } from "@/lib/settings";
 import { buildContentAudit, getPageInsights } from "@/lib/meta-insights";
@@ -188,7 +188,8 @@ export async function POST(request: Request) {
   }
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  if (!verifyCronOrInternal(request)) return cronUnauthorized();
   try {
     return await runContentLearning();
   } catch (err) {

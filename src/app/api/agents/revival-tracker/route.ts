@@ -4,7 +4,7 @@ export const dynamic = "force-dynamic";
 // Analyzes RevivalCohort records + ContactLog inbound replies over 30 days.
 // Calculates reply rate and stage advancement; alerts if reply rate < 8%.
 
-import { verifyCronSecret, cronUnauthorized } from "@/lib/cron-auth";
+import { verifyCronSecret, verifyCronOrInternal, cronUnauthorized } from "@/lib/cron-auth";
 import { prisma } from "@/lib/prisma";
 import { getSetting, invalidateSettingsCache } from "@/lib/settings";
 import { logError, withRetry } from "@/lib/error-memory";
@@ -186,6 +186,7 @@ export async function POST(request: Request) {
   return runRevivalTracker();
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  if (!verifyCronOrInternal(request)) return cronUnauthorized();
   return runRevivalTracker();
 }

@@ -1,7 +1,8 @@
 export const dynamic = "force-dynamic";
+export const maxDuration = 120;
 import { prisma } from "@/lib/prisma";
 import { generateDraft } from "@/lib/draft-agent";
-import { verifyCronSecret, cronUnauthorized } from "@/lib/cron-auth";
+import { verifyCronSecret, verifyCronOrInternal, cronUnauthorized } from "@/lib/cron-auth";
 import { startRun, finishRun, failRun } from "@/lib/agent-run";
 import { getTodayCT } from "@/lib/brief-date";
 import { getLoopDetails } from "@/lib/dotloop"; // AIRE: loop:dotloop-sync-freshness
@@ -20,8 +21,9 @@ export async function POST(request: Request) {
   return runWatchdog();
 }
 
-// Also callable via GET for manual dev trigger (no auth required in local dev)
-export async function GET() {
+// Also callable via GET for manual dev trigger
+export async function GET(request: Request) {
+  if (!verifyCronOrInternal(request)) return cronUnauthorized();
   return runWatchdog();
 }
 

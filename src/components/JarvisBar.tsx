@@ -22,6 +22,11 @@ const TOOL_LABELS: Record<string, string> = {
   run_comps: "running comps",
   search_mls: "searching MLS",
   market_pulse: "reading market data",
+  get_social_drafts: "checking drafts",
+  create_social_post: "writing post",
+  push_post_to_facebook: "pushing to Facebook",
+  score_caption: "scoring caption",
+  sync_fb_insights: "pulling engagement data",
 };
 
 export default function JarvisBar() {

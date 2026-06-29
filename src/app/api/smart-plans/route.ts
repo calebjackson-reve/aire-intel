@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
         let isClosed = false;
         try {
           const response = await client.messages.create({
-            model: "claude-fable-5",
+            model: "claude-opus-4-8",
             max_tokens: 2000,
             stream: true,
             system: REVE_PIPELINE_SYSTEM,

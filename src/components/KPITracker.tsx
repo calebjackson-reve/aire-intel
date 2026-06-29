@@ -21,11 +21,11 @@ interface Stats {
 }
 
 const METRICS: { key: Metric; label: string; sub: string; color: string; tileClass: string; format: (n: number) => string }[] = [
-  { key: "gci",      label: "GCI",      sub: "Gross Commission", color: "#EE8172", tileClass: "coral",  format: n => `$${(n / 1000).toFixed(0)}k` },
-  { key: "volume",   label: "Volume",   sub: "Closed Volume",    color: "#728AC5", tileClass: "blue",   format: n => n >= 1_000_000 ? `$${(n / 1_000_000).toFixed(2)}M` : `$${(n / 1000).toFixed(0)}k` },
-  { key: "units",    label: "Units",    sub: "Deals Closed",     color: "#F59E0B", tileClass: "amber",  format: n => String(n) },
-  { key: "pipeline", label: "Pipeline", sub: "Active Value",     color: "#065F46", tileClass: "green",  format: n => n >= 1_000_000 ? `$${(n / 1_000_000).toFixed(2)}M` : `$${(n / 1000).toFixed(0)}k` },
-  { key: "leads",    label: "Leads",    sub: "Sphere Growth",    color: "#7E5EA1", tileClass: "plum",   format: n => String(n) },
+  { key: "gci",      label: "GCI",      sub: "Gross Commission", color: "#FB7A01", tileClass: "coral",  format: n => `$${(n / 1000).toFixed(0)}k` },
+  { key: "volume",   label: "Volume",   sub: "Closed Volume",    color: "#5E72A8", tileClass: "blue",   format: n => n >= 1_000_000 ? `$${(n / 1_000_000).toFixed(2)}M` : `$${(n / 1000).toFixed(0)}k` },
+  { key: "units",    label: "Units",    sub: "Deals Closed",     color: "#B85F00", tileClass: "amber",  format: n => String(n) },
+  { key: "pipeline", label: "Pipeline", sub: "Active Value",     color: "#3E9C77", tileClass: "green",  format: n => n >= 1_000_000 ? `$${(n / 1_000_000).toFixed(2)}M` : `$${(n / 1000).toFixed(0)}k` },
+  { key: "leads",    label: "Leads",    sub: "Sphere Growth",    color: "#7E6CA8", tileClass: "plum",   format: n => String(n) },
 ];
 
 const PERIODS: { key: Period; label: string }[] = [
@@ -144,11 +144,9 @@ export default function KPITracker({ onLogDeal }: { onLogDeal: () => void }) {
                 border: "none",
                 textAlign: "left",
                 fontFamily: "inherit",
-                outline: isActive ? "3px solid rgba(255,255,255,0.6)" : "3px solid transparent",
-                outlineOffset: "-3px",
                 transform: isActive ? "translateY(-2px)" : "none",
-                transition: "transform 200ms var(--ease-apple), outline-color 150ms",
-                boxShadow: isActive ? "0 6px 24px rgba(0,0,0,0.18)" : "0 2px 8px rgba(0,0,0,0.10)",
+                transition: "transform 200ms var(--ease-apple), box-shadow 200ms",
+                boxShadow: isActive ? "var(--shadow-pressed-sm)" : "var(--shadow-card)",
               }}
             >
               <div className="st-label">{metricDef.label}</div>
