@@ -995,7 +995,7 @@ body > * { position: relative; z-index: 1; }
   width: 44px;
   height: 44px;
   border-radius: 12px;
-  background: var(--aire-green);
+  background: var(--aire-orange);
   color: #fff;
   font-family: var(--font-display-app);
   font-size: 22px;
@@ -1003,7 +1003,7 @@ body > * { position: relative; z-index: 1; }
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: var(--shadow-float);
+  box-shadow: var(--shadow-glow-orange);
 }
 
 .sign-in-name {
@@ -1033,15 +1033,15 @@ body > * { position: relative; z-index: 1; }
 }
 
 .sign-in-clerk-btn {
-  background: var(--aire-green) !important;
+  background: var(--aire-orange) !important;
   border-radius: 100px !important;
   font-family: var(--font-sans-app) !important;
   font-weight: 600 !important;
-  box-shadow: var(--shadow-glow-green) !important;
+  box-shadow: var(--shadow-glow-orange) !important;
 }
 
 .sign-in-clerk-btn:hover {
-  background: var(--aire-green-mid) !important;
+  background: var(--aire-orange-deep) !important;
 }
 
 .sign-in-clerk-social {
@@ -1052,6 +1052,6 @@ body > * { position: relative; z-index: 1; }
 }
 
 .sign-in-clerk-link {
-  color: var(--aire-green) !important;
+  color: var(--aire-orange) !important;
   font-family: var(--font-sans-app) !important;
 }
