@@ -38,7 +38,7 @@ function flavorTokens(flavor: Flavor) {
     case "mint":
       return { bg: "var(--aire-mint-soft)", fg: "#2d7a55", border: "rgba(184,230,208,0.5)" };
     case "coral":
-      return { bg: "var(--aire-coral-soft)", fg: "var(--aire-coral-deep)", border: "rgba(238,129,114,0.25)" };
+      return { bg: "var(--aire-coral-soft)", fg: "var(--aire-coral-deep)", border: "var(--accent-soft)" };
     case "cream":
     default:
       return { bg: "var(--aire-cream-soft)", fg: "#8a7a18", border: "rgba(239,221,132,0.35)" };

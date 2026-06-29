@@ -9,148 +9,263 @@
 @font-face { font-family:'Hauora'; src:url('/fonts/Hauora-Bold.woff2') format('woff2');      font-weight:700; font-style:normal; font-display:swap; }
 @font-face { font-family:'Hauora'; src:url('/fonts/Hauora-ExtraBold.woff2') format('woff2'); font-weight:800; font-style:normal; font-display:swap; }
 
-/* ─── Design Tokens — AIRÉ × NEU Neumorphic System (light, orange contrast) ──── */
-/* Locked 2026-06-23. Off-white surfaces, pronounced dual-shadow depth, #FB7A01   */
-/* as the single signal color. Variable NAMES preserved for back-compat; only     */
-/* VALUES changed so the whole app inherits the neumorphic skin.                   */
+/* ─── Design Tokens — Caleb OS (Phase 1 · 2026-06-29) ──────────────────────────
+   Source of truth: caleb-os-design/phase-075/01-design-tokens.css
+   Legacy component aliases live in the :root block below the canonical block.
+   ──────────────────────────────────────────────────────────────────────────── */
+/* ── CANONICAL TOKENS (Phase 0.75 → Phase 1) ─────────────────────────────── */
 :root {
-  /* ── Neumorphic shadow engine ── */
-  --nm-dark:           #C5C9D6;   /* cool-gray shadow (bottom-right) */
-  --nm-light:          #FFFFFF;   /* highlight (top-left) */
 
-  /* ── Brand palette — orange is the ONLY accent ── */
-  --aire-orange:       #FB7A01;
-  --aire-orange-deep:  #9A4F00;   /* orange TEXT on light — AA at body size */
-  --aire-orange-soft:  rgba(251,122,1,0.14);
-  --on-accent:         #FFFFFF;   /* white labels on orange — Caleb's locked choice (high-pop look) */
-  /* --aire-green* repointed to orange so all primary/active affordances flip */
-  --aire-green:        #FB7A01;
-  --aire-green-mid:    #FFA667;
-  --aire-green-soft:   rgba(251,122,1,0.12);
-  --aire-green-light:  #FFE7CE;
-  --coral:             #EE8172;
-  --coral-press:       #DE7264;
-  --coral-soft:        rgba(238,129,114,0.12);
-  --cream:             #EFDD84;
-  --blue:              #728AC5;
+  /* SURFACES */
+  --canvas:               #EFF0F3;
+  --canvas-sunken:        #E6E7EC;
+  --surface:              #FFFFFF;
+  --surface-2:            #FBFBFC;
+  --surface-ink:          #3A4257;
+  --surface-accent:       #FB7A01;   /* ONE primary action surface per view — no exceptions */
 
-  /* ── Surfaces (off-white neumorphic — solid, same-tone) ── */
-  --aire-bg:           #EFF0F3;   /* canvas — light gray, lets white cards pop */
-  --aire-bg-deep:      #E6E7EC;   /* sunken */
-  --aire-card:         #FFFFFF;   /* raised surface (flat white, hairline-bordered) */
-  --aire-card-warm:    #FFFFFF;   /* more raised → also white; depth via border+shadow */
-  --aire-glass:        #FFFFFF;   /* subtle panel */
-  --aire-glass-2:      #FBFBFC;
-  --aire-glass-line:   rgba(58,66,87,0.08);
+  /* INK */
+  --ink:                  #3A4257;
+  --ink-2:                #565E70;
+  --ink-muted:            #6B7385;
+  --ink-faint:            #CDD1DB;
+  --ink-inverse:          #FFFFFF;
+  --ink-inverse-muted:    rgba(255,255,255,0.70);
+  --ink-80:               rgba(58,66,87,0.80);
+  --ink-70:               rgba(58,66,87,0.70);
+  --ink-50:               rgba(58,66,87,0.50);
+  --ink-40:               rgba(58,66,87,0.40);
+  --ink-30:               rgba(58,66,87,0.30);
 
-  /* ── Text (slate ink on off-white) ── */
-  --aire-text:         #3A4257;   /* primary / figures ink */
-  --aire-text-2:       #565E70;   /* secondary (AA headroom) */
-  --aire-muted:        #6B7385;   /* hints (AA) */
-  --aire-faint:        #CDD1DB;
-  --aire-ink:          #3A4257;
-  --aire-ink-soft:     #4C546A;
-  --aire-text-inv:     #FFFFFF;
-  --aire-muted-inv:    rgba(255,255,255,0.70);
+  /* ACCENT — orange is the ONLY signal color */
+  --accent:               #FB7A01;
+  --accent-ink:           #9A4F00;
+  --accent-press:         #B85F00;
+  --accent-soft:          rgba(251,122,1,0.14);
+  --accent-soft-10:       rgba(251,122,1,0.10);
+  --on-accent:            #FFFFFF;   /* locked by Caleb — high-pop CTA look */
 
-  /* ── Accent aliases (back-compat → orange family) ── */
-  --aire-coral:        #FB7A01;
-  --aire-coral-soft:   rgba(251,122,1,0.12);
-  --aire-coral-deep:   #B85F00;
-  --aire-cream:        #B85F00;   /* eyebrows etc. — deep orange for AA */
-  --aire-cream-soft:   rgba(251,122,1,0.10);
-  --aire-mint:         #FB7A01;
-  --aire-mint-soft:    rgba(251,122,1,0.10);
-  --aire-mint-text:    #236648;          /* mint/success text (AA) */
-  --aire-green-deep:   #9A4F00;          /* legacy alias → deep orange */
-  --aire-surface:      var(--aire-card); /* legacy alias */
+  /* STATUS */
+  --status-urgent:        #E2645C;
+  --status-active:        #45A883;
+  --status-warm:          #FB7A01;
+  --status-cold:          #CDD1DB;
+  --status-cold-ink:      #8990A0;
+  --status-urgent-soft:   rgba(226,100,92,0.12);
+  --status-active-soft:   rgba(69,168,131,0.14);
+  --status-active-ink:    #236648;
+  --status-cold-soft:     rgba(58,66,87,0.05);
 
-  /* ── Borders (neumorphism leans on shadow; borders are faint dividers) ── */
-  --aire-border:       rgba(58,66,87,0.08);
-  --aire-border-2:     rgba(58,66,87,0.13);
-  --aire-border-ink:   rgba(58,66,87,0.10);
+  /* LINES */
+  --line:                 rgba(58,66,87,0.08);
+  --line-2:               rgba(58,66,87,0.13);
 
-  /* ── Shadows — FLAT/airy (Lofty-aligned 2026-06-28): soft single-drop, hairline depth ── */
-  /* Flattened from the neumorphic dual-shadow system. Cards now lean on borders + a whisper */
-  /* of drop shadow instead of pronounced 3D extrusion. nm-dark/light retained for back-compat. */
-  --shadow-float:       0 4px 14px rgba(16,24,40,0.08), 0 1px 3px rgba(16,24,40,0.05);
-  --shadow-float-hover: 0 8px 24px rgba(16,24,40,0.10), 0 2px 6px rgba(16,24,40,0.06);
-  --shadow-card:        0 1px 2px rgba(16,24,40,0.04), 0 1px 3px rgba(16,24,40,0.06);
-  --shadow-card-hover:  0 2px 6px rgba(16,24,40,0.08), 0 1px 3px rgba(16,24,40,0.06);
-  --shadow-pressed:     inset 0 0 0 1px rgba(58,66,87,0.12);
-  --shadow-pressed-sm:  inset 0 0 0 1px rgba(58,66,87,0.10);
-  --shadow-ink:         0 1px 2px rgba(16,24,40,0.04), 0 1px 3px rgba(16,24,40,0.06);
-  --shadow-pill:        0 1px 2px rgba(16,24,40,0.06);
-  --shadow-glow-green:  0 1px 2px rgba(16,24,40,0.06), 0 2px 10px rgba(251,122,1,0.25);
-  --shadow-glow-orange: 0 1px 2px rgba(16,24,40,0.06), 0 2px 12px rgba(251,122,1,0.30);
-  --shadow-glow-coral:  var(--shadow-glow-orange);
+  /* STAT ACCENTS (KPI tile top-bar only) */
+  --stat-coral:           #FB7A01;
+  --stat-blue:            #5E72A8;
+  --stat-amber:           #B85F00;
+  --stat-green:           #3E9C77;
+  --stat-plum:            #7E6CA8;
+
+  /* TYPOGRAPHY */
+  --font-display:         'Fraunces', Georgia, serif;
+  --font-ui:              'Hauora', system-ui, -apple-system, sans-serif;
+  /* Type scale — display (Fraunces) */
+  --type-display-hero-size: clamp(28px, 4vw, 40px);
+  --type-display-hero-lh:   1.08;
+  --type-display-1-size:    32px;
+  --type-display-1-lh:      1.10;
+  --type-display-2-size:    24px;
+  --type-display-2-lh:      1.12;
+  --type-display-3-size:    19px;
+  --type-display-3-lh:      1.15;
+  --type-figure-xl-size:    38px;
+  --type-figure-xl-lh:      1.0;
+  --type-figure-lg-size:    28px;
+  --type-figure-lg-lh:      1.0;
+  /* Type scale — UI (Hauora) */
+  --type-label-size:        11px;
+  --type-label-lh:          1.45;
+  --type-caption-size:      12px;
+  --type-caption-lh:        1.45;
+  --type-body-sm-size:      13px;
+  --type-body-sm-lh:        1.50;
+  --type-body-size:         13.5px;
+  --type-body-lh:           1.50;
+  --type-body-md-size:      14px;
+  --type-body-md-lh:        1.55;
+  --type-ui-size:           15px;
+  --type-ui-lh:             1.45;
+  --type-title-size:        17px;
+  --type-title-lh:          1.35;
+
+  /* SPACING */
+  --space-1:   4px;
+  --space-2:   8px;
+  --space-3:   12px;
+  --space-4:   16px;
+  --space-5:   20px;
+  --space-6:   24px;
+  --space-7:   28px;
+  --space-8:   32px;
+  --space-10:  40px;
+  --space-12:  48px;
+  --space-16:  60px;
+
+  /* RADIUS */
+  --radius-xs:    5px;
+  --radius-sm:    8px;
+  --radius-md:    10px;
+  --radius-lg:    12px;
+  --radius-card:  14px;
+  --radius-pill:  100px;
+
+  /* SHADOWS */
   --shadow-xs:          0 1px 2px rgba(16,24,40,0.04);
   --shadow-sm:          0 1px 2px rgba(16,24,40,0.04), 0 1px 3px rgba(16,24,40,0.06);
+  --shadow-card:        0 1px 2px rgba(16,24,40,0.04), 0 1px 3px rgba(16,24,40,0.06);
+  --shadow-card-hover:  0 2px 6px rgba(16,24,40,0.08), 0 1px 3px rgba(16,24,40,0.06);
+  --shadow-float:       0 4px 14px rgba(16,24,40,0.08), 0 1px 3px rgba(16,24,40,0.05);
+  --shadow-float-hover: 0 8px 24px rgba(16,24,40,0.10), 0 2px 6px rgba(16,24,40,0.06);
+  --shadow-input-focus: 0 0 0 3px rgba(251,122,1,0.18);
+  --shadow-glow-orange: 0 1px 2px rgba(16,24,40,0.06), 0 2px 12px rgba(251,122,1,0.30);
+
+  /* MOTION */
+  --dur-instant:    90ms;
+  --dur-fast:       150ms;
+  --dur-base:       200ms;
+  --dur-slow:       260ms;
+  --dur-deliberate: 440ms;
+  --dur-ceremony:   900ms;
+  --stagger:        30ms;
+  --ease-standard:      cubic-bezier(0.22, 0.61, 0.36, 1);
+  --ease-out-expo:      cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out:        cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-in:            cubic-bezier(0.4, 0, 1, 1);
+  --ease-gentle-spring: cubic-bezier(0.34, 1.4, 0.5, 1);
+
+  /* Z-INDEX */
+  --z-base:        1;
+  --z-sticky:      20;
+  --z-rail:        50;
+  --z-topbar:      200;
+  --z-dropdown:    300;
+  --z-popover:     400;
+  --z-tooltip:     600;
+  --z-jarvis-dock: 1000;
+  --z-toast:       8000;
+  --z-overlay:     9000;
+  --z-modal:       9001;
+  --z-max:         9999;
+
+  /* LAYOUT */
+  --rail-collapsed:  60px;
+  --rail-expanded:   236px;
+  --content-max:     1240px;
+  --topnav-h:        58px;   /* legacy top bar height, retained for component compat */
+}
+
+/* ── LEGACY SHIM — back-compat aliases for existing components ───────────────
+   Do NOT use these in new components. Migrate to canonical tokens above.
+   This block will be removed once all components are migrated (Phase 2+).
+   ─────────────────────────────────────────────────────────────────────────── */
+:root {
+  --aire-bg:           var(--canvas);
+  --aire-bg-deep:      var(--canvas-sunken);
+  --aire-card:         var(--surface);
+  --aire-card-warm:    var(--surface);
+  --aire-glass:        var(--surface);
+  --aire-glass-2:      var(--surface-2);
+  --aire-glass-line:   var(--line);
+  --aire-surface:      var(--surface);
+
+  --aire-text:         var(--ink);
+  --aire-text-2:       var(--ink-2);
+  --aire-muted:        var(--ink-muted);
+  --aire-faint:        var(--ink-faint);
+  --aire-ink:          var(--ink);
+  --aire-ink-soft:     var(--ink-2);
+  --aire-text-inv:     var(--ink-inverse);
+  --aire-muted-inv:    var(--ink-inverse-muted);
+
+  --aire-orange:       var(--accent);
+  --aire-orange-deep:  var(--accent-ink);
+  --aire-orange-soft:  var(--accent-soft);
+  --aire-green:        var(--accent);
+  --aire-green-mid:    var(--accent);
+  --aire-green-soft:   var(--accent-soft);
+  --aire-green-light:  var(--accent-soft-10);
+  --aire-green-deep:   var(--accent-ink);
+  --aire-coral:        var(--accent);
+  --aire-coral-soft:   var(--accent-soft);
+  --aire-coral-deep:   var(--accent-press);
+  --aire-cream:        var(--accent-ink);
+  --aire-cream-soft:   var(--accent-soft-10);
+  --aire-mint:         var(--accent);
+  --aire-mint-soft:    var(--accent-soft-10);
+  --aire-mint-text:    var(--status-active-ink);
+
+  --coral:             var(--accent);
+  --coral-press:       var(--accent-press);
+  --coral-soft:        var(--accent-soft);
+  --cream:             var(--accent-ink);
+  --blue:              var(--stat-blue);
+
+  --aire-border:       var(--line);
+  --aire-border-2:     var(--line-2);
+  --aire-border-ink:   var(--line-2);
+
+  --shadow-pill:        var(--shadow-xs);
+  --shadow-pressed:     inset 0 0 0 1px rgba(58,66,87,0.12);
+  --shadow-pressed-sm:  inset 0 0 0 1px rgba(58,66,87,0.10);
+  --shadow-ink:         var(--shadow-card);
   --shadow-md:          var(--shadow-float);
   --shadow-lg:          var(--shadow-float-hover);
   --shadow-xl:          var(--shadow-float-hover);
+  --shadow-glow-green:  var(--shadow-glow-orange);
+  --shadow-glow-coral:  var(--shadow-glow-orange);
 
-  /* ── Status (semantic — kept distinct from the orange brand accent) ── */
-  --status-urgent:     #E2645C;
-  --status-active:     #45A883;   /* a real green for "active" status only */
-  --status-warm:       #FB7A01;
-  --status-cold:       #CDD1DB;
-  --status-cold-text:  #8990A0;
+  --status-cold-text:  var(--status-cold-ink);
 
-  /* ── Sidebar (retained for rollback) ── */
-  --sidebar-collapsed: 60px;
-  --sidebar-expanded:  236px;
+  --sidebar-collapsed: var(--rail-collapsed);
+  --sidebar-expanded:  var(--rail-expanded);
 
-  /* ── Top nav (Phase 1 — Lofty-style horizontal bar) ── */
-  --topnav-h: 58px;
+  --font-display-app:  var(--font-display);
+  --font-sans-app:     var(--font-ui);
+  --ease-spring:       var(--ease-gentle-spring);
+  --ease-apple:        var(--ease-standard);
 
-  /* ── Stat tile accents (used as value/dot color on raised neumorphic tiles) ── */
-  --stat-coral:  #FB7A01;
-  --stat-blue:   #5E72A8;
-  --stat-amber:  #B85F00;
-  --stat-green:  #3E9C77;
-  --stat-plum:   #7E6CA8;
+  --white-80: var(--ink-80);
+  --white-70: var(--ink-70);
+  --white-50: var(--ink-50);
+  --white-40: var(--ink-40);
+  --white-30: var(--ink-30);
 
-  /* ── Backward-compat Rêve aliases ── */
-  --reve-black:        #3A4257;
-  --reve-void:         var(--aire-bg-deep);
-  --reve-surface:      var(--aire-card);
-  --reve-surface-2:    var(--aire-card-warm);
-  --reve-surface-3:    var(--aire-bg-deep);
-  --reve-border:       var(--aire-border);
-  --reve-border-2:     var(--aire-border-2);
-  --reve-text:         var(--aire-text);
-  --reve-text-2:       var(--aire-text-2);
-  --reve-muted:        var(--aire-muted);
-  --reve-faint:        var(--aire-faint);
-  --reve-coral:        var(--aire-coral);
-  --reve-coral-dim:    var(--aire-coral-soft);
-  --reve-blue:         var(--blue);
-  --reve-blue-dim:     rgba(114,138,197,0.10);
-  --reve-cream:        var(--aire-cream);
-  --reve-green:        var(--aire-green);
+  --reve-black:     var(--ink);
+  --reve-void:      var(--canvas-sunken);
+  --reve-surface:   var(--surface);
+  --reve-surface-2: var(--surface);
+  --reve-surface-3: var(--canvas-sunken);
+  --reve-border:    var(--line);
+  --reve-border-2:  var(--line-2);
+  --reve-text:      var(--ink);
+  --reve-text-2:    var(--ink-2);
+  --reve-muted:     var(--ink-muted);
+  --reve-faint:     var(--ink-faint);
+  --reve-coral:     var(--accent);
+  --reve-coral-dim: var(--accent-soft);
+  --reve-blue:      var(--stat-blue);
+  --reve-blue-dim:  rgba(114,138,197,0.10);
+  --reve-cream:     var(--accent-ink);
+  --reve-green:     var(--accent);
 
-  /* ── Fonts — Josefin Sans (kit UI font) + Fraunces (editorial display) ── */
-  --font-display-app: 'Fraunces', Georgia, serif;
-  --font-sans-app:    'Josefin Sans', 'Hauora', system-ui, -apple-system, sans-serif;
-
-  /* ── Ink helpers (semi-opaque slate, for light theme) ── */
-  --white-80: rgba(58,66,87,0.80);
-  --white-70: rgba(58,66,87,0.70);
-  --white-50: rgba(58,66,87,0.50);
-  --white-40: rgba(58,66,87,0.40);
-  --white-30: rgba(58,66,87,0.30);
-
-  /* ── Motion ── */
-  --ease-spring:   cubic-bezier(0.34, 1.56, 0.64, 1);
-  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
-  --ease-in-out:   cubic-bezier(0.65, 0, 0.35, 1);
-  --ease-apple:    cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  --nm-dark:  var(--line-2);
+  --nm-light: var(--surface);
 }
 
 @theme inline {
-  --color-background: var(--aire-bg);
-  --color-foreground: var(--aire-text);
+  --color-background: var(--canvas);
+  --color-foreground: var(--ink);
 }
 
 /* ─── Reset ─────────────────────────────────────────────────────────────────── */
@@ -158,15 +273,15 @@
 
 /* ─── Base ───────────────────────────────────────────────────────────────────── */
 html {
-  background: var(--aire-bg);
+  background: var(--canvas);
   height: 100%;
   scroll-behavior: smooth;
 }
 
 body {
-  background: var(--aire-bg);
-  color: var(--aire-text);
-  font-family: 'Josefin Sans', 'Hauora', -apple-system, system-ui, sans-serif;
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: var(--font-ui);
   font-weight: 400;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;

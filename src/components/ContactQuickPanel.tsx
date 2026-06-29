@@ -214,15 +214,15 @@ export default function ContactQuickPanel({ id }: { id: string }) {
       {/* ── AI draft panel ── */}
       {showAI && (
         <div style={{
-          background: "rgba(238,129,114,0.06)",
-          border: "1px solid rgba(238,129,114,0.18)",
+          background: "var(--accent-soft)",
+          border: "1px solid var(--accent-soft)",
           borderRadius: "12px",
           padding: "14px",
         }}>
           <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
             <span style={{ fontSize: "10px", letterSpacing: "0.14em", color: "var(--aire-coral)", fontWeight: 500 }}>✦ AI FOLLOW-UP</span>
             <div style={{ display: "flex", gap: "6px" }}>
-              <button onClick={generateAI} style={{ ...tinyBtnStyle, border: "1px solid rgba(238,129,114,0.3)", color: "var(--aire-coral)" }}>
+              <button onClick={generateAI} style={{ ...tinyBtnStyle, border: "1px solid var(--accent-soft)", color: "var(--aire-coral)" }}>
                 REDO
               </button>
               {aiStream && (

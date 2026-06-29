@@ -47,7 +47,7 @@ const TYPE_PILL: Record<string, string> = {
 
 // Severity hue tokens
 const SEVERITY_TOKENS: Record<string, { color: string; bg: string; border: string }> = {
-  critical: { color: "var(--aire-coral-deep)", bg: "var(--aire-coral-soft)", border: "rgba(238,129,114,0.25)" },
+  critical: { color: "var(--aire-coral-deep)", bg: "var(--aire-coral-soft)", border: "var(--accent-soft)" },
   high:     { color: "#8a7a18",                bg: "var(--aire-cream-soft)", border: "rgba(239,221,132,0.4)" },
   medium:   { color: "var(--aire-text-2)",     bg: "var(--aire-card-warm)",  border: "var(--aire-border)" },
 };
@@ -291,7 +291,7 @@ export default function SystemPage() {
             );
           })}
           {resolvedCount > 0 && (
-            <button onClick={clearResolved} className="btn-ghost" style={{ padding: "6px 14px", fontSize: "10px", color: "var(--aire-coral-deep)", borderColor: "rgba(238,129,114,0.3)" }}>
+            <button onClick={clearResolved} className="btn-ghost" style={{ padding: "6px 14px", fontSize: "10px", color: "var(--aire-coral-deep)", borderColor: "var(--accent-soft)" }}>
               CLEAR RESOLVED
             </button>
           )}

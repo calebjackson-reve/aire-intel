@@ -106,12 +106,12 @@ function MicButton({ onResult }: { onResult: (text: string) => void }) {
       onClick={toggle}
       title={listening ? "Stop listening" : "Speak your idea"}
       style={{
-        background: listening ? "rgba(238,129,114,0.15)" : "transparent",
-        border: `1px solid ${listening ? "var(--reve-coral, #EE8172)" : "rgba(255,255,255,0.15)"}`,
+        background: listening ? "var(--accent-soft)" : "transparent",
+        border: `1px solid ${listening ? "var(--accent)" : "rgba(255,255,255,0.15)"}`,
         borderRadius: 8,
         padding: "6px 10px",
         cursor: "pointer",
-        color: listening ? "var(--reve-coral, #EE8172)" : "rgba(255,255,255,0.5)",
+        color: listening ? "var(--accent)" : "rgba(255,255,255,0.5)",
         display: "flex",
         alignItems: "center",
         gap: 5,
@@ -179,13 +179,13 @@ function ClipZone({ clips, onAdd, onRemove }: {
     <div>
       <div
         style={{
-          border: `2px dashed ${dragging ? "var(--reve-coral, #EE8172)" : "rgba(255,255,255,0.12)"}`,
+          border: `2px dashed ${dragging ? "var(--accent)" : "rgba(255,255,255,0.12)"}`,
           borderRadius: 14,
           padding: "20px 16px",
           textAlign: "center",
           cursor: "pointer",
           transition: "border-color 0.15s",
-          background: dragging ? "rgba(238,129,114,0.05)" : "transparent",
+          background: dragging ? "var(--accent-soft)" : "transparent",
         }}
         onClick={() => inputRef.current?.click()}
         onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
@@ -208,7 +208,7 @@ function ClipZone({ clips, onAdd, onRemove }: {
                 <span style={{ fontVariantNumeric: "tabular-nums" }}>{pct}%</span>
               </div>
               <div style={{ height: 4, borderRadius: 2, background: "rgba(255,255,255,0.1)", overflow: "hidden" }}>
-                <div style={{ height: "100%", width: `${pct}%`, background: "var(--reve-coral, #EE8172)", transition: "width 0.2s" }} />
+                <div style={{ height: "100%", width: `${pct}%`, background: "var(--accent)", transition: "width 0.2s" }} />
               </div>
             </div>
           ))}
@@ -217,7 +217,7 @@ function ClipZone({ clips, onAdd, onRemove }: {
 
       {/* Upload error */}
       {error && (
-        <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 10, fontSize: 12, color: "var(--reve-coral, #EE8172)" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 10, fontSize: 12, color: "var(--accent)" }}>
           <AlertCircle size={13} />
           <span>{error}</span>
         </div>
@@ -259,7 +259,7 @@ function ResultCard({
   if (result.status === "pending" || result.status === "rendering") {
     return (
       <div className="glass-card" style={{ padding: 24, display: "flex", alignItems: "center", gap: 14 }}>
-        <Loader2 size={22} style={{ animation: "spin 1s linear infinite", color: "var(--reve-coral, #EE8172)" }} />
+        <Loader2 size={22} style={{ animation: "spin 1s linear infinite", color: "var(--accent)" }} />
         <div>
           <div style={{ fontWeight: 600, fontSize: 14 }}>
             {result.status === "rendering" ? "Rendering your video…" : "Video Brain is working…"}
@@ -274,7 +274,7 @@ function ResultCard({
 
   if (result.status === "error") {
     return (
-      <div className="glass-card" style={{ padding: 20, borderLeft: "3px solid var(--reve-coral, #EE8172)" }}>
+      <div className="glass-card" style={{ padding: 20, borderLeft: "3px solid var(--accent)" }}>
         <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>Something went wrong</div>
         <div style={{ fontSize: 12, opacity: 0.6 }}>{result.message}</div>
       </div>
@@ -286,7 +286,7 @@ function ResultCard({
   return (
     <div className="glass-card" style={{ padding: 24 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
-        <Check size={16} style={{ color: "var(--reve-coral, #EE8172)" }} />
+        <Check size={16} style={{ color: "var(--accent)" }} />
         <span style={{ fontWeight: 600, fontSize: 14 }}>
           {result.type === "reel" ? "Reel rendered" : result.type === "carousel" ? "Carousel generated" : result.type === "brief" ? "Production brief ready" : "Caption ready"}
         </span>
@@ -417,11 +417,11 @@ function SeedBrainBanner({ onSeeded }: { onSeeded: () => void }) {
   if (done) return null;
 
   return (
-    <div className="glass-card" style={{ padding: 20, marginBottom: 24, borderLeft: "3px solid var(--reve-coral, #EE8172)" }}>
+    <div className="glass-card" style={{ padding: 20, marginBottom: 24, borderLeft: "3px solid var(--accent)" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
         <div>
           <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>
-            <Sparkles size={14} style={{ display: "inline", marginRight: 6, color: "var(--reve-coral, #EE8172)" }} />
+            <Sparkles size={14} style={{ display: "inline", marginRight: 6, color: "var(--accent)" }} />
             Seed the Brain before your first reel
           </div>
           <div style={{ fontSize: 12, opacity: 0.55 }}>
@@ -584,7 +584,7 @@ export default function StudioPage() {
       {/* Header */}
       <div style={{ marginBottom: 24 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
-          <Zap size={20} style={{ color: "var(--reve-coral, #EE8172)" }} />
+          <Zap size={20} style={{ color: "var(--accent)" }} />
           <h1 style={{ fontSize: 26, fontWeight: 600, letterSpacing: "-0.02em" }}>Video Brain</h1>
         </div>
         <p style={{ fontSize: 13, opacity: 0.5, lineHeight: 1.6 }}>
@@ -673,9 +673,9 @@ export default function StudioPage() {
             </div>
 
             {refVideo ? (
-              <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", background: "rgba(238,129,114,0.08)", borderRadius: 10, border: "1px solid rgba(238,129,114,0.2)" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", background: "var(--accent-soft)", borderRadius: 10, border: "1px solid var(--accent-soft)" }}>
                 {refVideo.thumbnailUrl && <img src={refVideo.thumbnailUrl} alt="" style={{ width: 40, height: 40, objectFit: "cover", borderRadius: 6 }} />}
-                <Film size={16} style={{ color: "var(--reve-coral, #EE8172)", flexShrink: 0 }} />
+                <Film size={16} style={{ color: "var(--accent)", flexShrink: 0 }} />
                 <span style={{ fontSize: 13, flex: 1 }}>{refVideo.label}</span>
                 <button onClick={() => setRefVideo(null)} style={{ background: "none", border: "none", cursor: "pointer", opacity: 0.5 }}><X size={14} /></button>
               </div>

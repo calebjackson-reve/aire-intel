@@ -132,7 +132,7 @@ export default function AIAssistant() {
           fontSize: "22px",
           fontWeight: 600,
           boxShadow: hover
-            ? "0 8px 24px rgba(26,26,28,0.30), 0 0 32px rgba(238,129,114,0.20)"
+            ? "0 8px 24px rgba(26,26,28,0.30), 0 0 32px var(--accent-soft)"
             : "var(--shadow-ink)",
           transform: hover ? "translateY(-2px)" : "translateY(0)",
           transition: "transform 240ms var(--ease-spring), box-shadow 240ms var(--ease-apple)",
@@ -189,7 +189,7 @@ export default function AIAssistant() {
                   background: "var(--aire-coral)",
                   display: "inline-block",
                   flexShrink: 0,
-                  boxShadow: "0 0 8px rgba(238,129,114,0.45)",
+                  boxShadow: "0 0 8px var(--accent-soft)",
                 }}
               />
               <span

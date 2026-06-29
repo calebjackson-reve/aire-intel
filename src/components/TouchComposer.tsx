@@ -32,7 +32,7 @@ type Channel = "call" | "sms" | "email" | "messenger" | "instagram" | "linkedin"
 
 const CHANNEL_META: Record<Channel, { icon: string; label: string; color: string }> = {
   call:      { icon: "☎", label: "Call",      color: "#4ADE80" },
-  sms:       { icon: "✉", label: "Text",       color: "#EE8172" },
+  sms:       { icon: "✉", label: "Text",       color: "var(--accent)" },
   email:     { icon: "◎", label: "Email",      color: "#728AC5" },
   messenger: { icon: "⬡", label: "Messenger", color: "#0078FF" },
   instagram: { icon: "◈", label: "Instagram",  color: "#E1306C" },

@@ -357,9 +357,9 @@ export default function SocialPage() {
             <div style={{
               padding: "10px 14px", borderRadius: "10px", marginBottom: "14px",
               background: publishResult.includes("Error")
-                ? "rgba(238,129,114,0.14)"
+                ? "var(--accent-soft)"
                 : "rgba(184,230,208,0.14)",
-              border: `1px solid ${publishResult.includes("Error") ? "rgba(238,129,114,0.3)" : "rgba(184,230,208,0.3)"}`,
+              border: `1px solid ${publishResult.includes("Error") ? "var(--accent-soft)" : "rgba(184,230,208,0.3)"}`,
             }}>
               <p style={{ fontSize: "12px", color: publishResult.includes("Error") ? "var(--aire-coral)" : "var(--aire-mint)" }}>
                 {publishResult}

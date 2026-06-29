@@ -22,12 +22,12 @@ interface Lead {
 const STAGES = [
   { id: "new_lead", label: "New Lead", color: "#728AC5" },
   { id: "active", label: "Active", color: "#EFDD84" },
-  { id: "showing", label: "Showing", color: "#EE8172" },
+  { id: "showing", label: "Showing", color: "var(--accent)" },
   { id: "under_contract", label: "Under Contract", color: "#4ade80" },
   { id: "closed", label: "Closed", color: "#888" },
 ];
 
-const CORAL = "#EE8172";
+const CORAL = "var(--accent)";
 const BLUE = "#728AC5";
 const GREEN = "#4ade80";
 const CREAM = "#EFDD84";

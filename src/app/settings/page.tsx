@@ -605,7 +605,7 @@ export default function Settings() {
         />
 
         {/* Always show reconnect button — tokens expire every 60 days */}
-        <div style={{ marginBottom: "16px", padding: "14px 16px", background: "rgba(238,129,114,0.06)", border: "1px solid rgba(238,129,114,0.25)", borderRadius: "12px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" as const }}>
+        <div style={{ marginBottom: "16px", padding: "14px 16px", background: "var(--accent-soft)", border: "1px solid var(--accent-soft)", borderRadius: "12px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" as const }}>
           <div>
             <p style={{ fontSize: "12px", fontWeight: 600, color: "var(--aire-text)", margin: "0 0 2px" }}>Facebook Page Token</p>
             <p style={{ fontSize: "11px", color: "var(--aire-muted)", margin: 0 }}>Tokens expire every 60 days — reconnect to refresh automatically.</p>

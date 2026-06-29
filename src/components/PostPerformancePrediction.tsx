@@ -35,7 +35,7 @@ interface Prediction {
 }
 
 const TIER_COLOR: Record<string, string> = {
-  viral: "#F59E0B",
+  viral: "var(--status-warm)",
   high: "#2C7A5C",
   medium: "#3B82F6",
   low: "var(--aire-muted)",
@@ -49,7 +49,7 @@ const IMPACT_ICON: Record<string, string> = {
 
 const IMPACT_COLOR: Record<string, string> = {
   positive: "#2C7A5C",
-  warning: "#F59E0B",
+  warning: "var(--status-warm)",
   neutral: "var(--aire-muted)",
 };
 

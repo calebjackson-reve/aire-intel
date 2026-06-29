@@ -25,8 +25,8 @@ const AGENT_LABELS: Record<string, string> = {
 
 const STATUS_COLORS: Record<string, string> = {
   completed: "#065F46",
-  partial: "#F59E0B",
-  failed: "#EE8172",
+  partial: "var(--status-warm)",
+  failed: "var(--status-urgent)",
   running: "#728AC5",
 };
 
@@ -179,7 +179,7 @@ export default function AgentsPage() {
                 <span>{run.actionsQueued} queued</span>
                 <span>{duration(run.durationMs)}</span>
                 {run.errorLog && (run.errorLog as unknown[]).length > 0 && (
-                  <span style={{ color: "#EE8172" }}>{(run.errorLog as unknown[]).length} error{(run.errorLog as unknown[]).length > 1 ? "s" : ""}</span>
+                  <span style={{ color: "var(--status-urgent)" }}>{(run.errorLog as unknown[]).length} error{(run.errorLog as unknown[]).length > 1 ? "s" : ""}</span>
                 )}
               </div>
             </div>

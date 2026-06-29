@@ -159,7 +159,7 @@ function MetaSetupEmptyState() {
               marginTop: "20px",
               padding: "14px 16px",
               background: "var(--aire-coral-soft)",
-              border: "1px solid rgba(238,129,114,0.30)",
+              border: "1px solid var(--accent-soft)",
               borderRadius: "10px",
             }}
           >

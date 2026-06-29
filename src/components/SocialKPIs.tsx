@@ -30,7 +30,7 @@ function KPICard({ label, value, subtext, trend, accent }: {
       <span style={{ fontSize: 10, letterSpacing: "0.14em", color: "var(--aire-muted)", textTransform: "uppercase" }}>{label}</span>
       <span style={{ fontSize: 26, fontWeight: 700, color: accentColor, letterSpacing: "-0.02em" }}>{value}</span>
       {(subtext || trend !== undefined) && (
-        <span style={{ fontSize: 11, color: trend !== undefined && trend > 0 ? "#2C7A5C" : trend !== undefined && trend < 0 ? "#EE8172" : "var(--aire-muted)" }}>
+        <span style={{ fontSize: 11, color: trend !== undefined && trend > 0 ? "#2C7A5C" : trend !== undefined && trend < 0 ? "var(--accent)" : "var(--aire-muted)" }}>
           {trend !== undefined && trend > 0 && "▲ "}
           {trend !== undefined && trend < 0 && "▼ "}
           {trend !== undefined ? `${Math.abs(trend)}%` : ""}

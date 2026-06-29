@@ -30,7 +30,7 @@ interface Draft {
   feedbackNote: string | null;
 }
 
-const PC: Record<string, string> = { facebook: "#1877F2", instagram: "#E1306C", both: "#EE8172" };
+const PC: Record<string, string> = { facebook: "#1877F2", instagram: "#E1306C", both: "var(--accent)" };
 
 function Badge({ p }: { p: string }) {
   const c = PC[p] ?? "#888";
@@ -120,7 +120,7 @@ function PreviewModal({ draft, onClose, onApprove, onReject, onSaveCaption }: {
           </p>
           <div style={{ background: "#fff", borderRadius: 12, overflow: "hidden", boxShadow: "0 24px 80px rgba(0,0,0,0.6)", fontFamily: "-apple-system,'Segoe UI',sans-serif" }}>
             <div style={{ padding: "12px 16px", display: "flex", alignItems: "center", gap: 10 }}>
-              <div style={{ width: 40, height: 40, borderRadius: "50%", background: "linear-gradient(135deg,#EE8172,#728AC5)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 700, color: "#fff", flexShrink: 0 }}>CJ</div>
+              <div style={{ width: 40, height: 40, borderRadius: "50%", background: "linear-gradient(135deg,var(--accent),#728AC5)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 700, color: "#fff", flexShrink: 0 }}>CJ</div>
               <div style={{ flex: 1 }}>
                 <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#050505" }}>Caleb Jackson- Realtor</p>
                 <p style={{ margin: 0, fontSize: 11, color: "#65676b" }}>{draft.scheduledFor ? new Date(draft.scheduledFor).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "Draft"} · 🌐</p>
@@ -203,7 +203,7 @@ function PreviewModal({ draft, onClose, onApprove, onReject, onSaveCaption }: {
                   <button
                     onClick={regenerate}
                     disabled={aiStreaming || !aiFeedback.trim()}
-                    style={{ marginTop: 8, width: "100%", padding: "10px", borderRadius: 10, fontSize: 11, letterSpacing: "0.08em", fontWeight: 700, background: aiStreaming ? "var(--aire-border)" : "rgba(238,129,114,0.15)", border: "1px solid rgba(238,129,114,0.4)", color: aiStreaming ? "var(--aire-muted)" : "var(--aire-coral)", cursor: aiStreaming ? "default" : "pointer", fontFamily: "inherit", transition: "all 150ms" }}
+                    style={{ marginTop: 8, width: "100%", padding: "10px", borderRadius: 10, fontSize: 11, letterSpacing: "0.08em", fontWeight: 700, background: aiStreaming ? "var(--aire-border)" : "var(--accent-soft)", border: "1px solid var(--accent-soft)", color: aiStreaming ? "var(--aire-muted)" : "var(--aire-coral)", cursor: aiStreaming ? "default" : "pointer", fontFamily: "inherit", transition: "all 150ms" }}
                   >
                     {aiStreaming ? "GENERATING…" : "⟳ REGENERATE  ⌘↵"}
                   </button>
@@ -231,7 +231,7 @@ function PreviewModal({ draft, onClose, onApprove, onReject, onSaveCaption }: {
                   <button onClick={onApprove} style={{ width: "100%", padding: "14px", borderRadius: 10, fontSize: 12, letterSpacing: "0.1em", fontWeight: 700, background: "var(--aire-coral)", border: "none", color: "#fff", cursor: "pointer", fontFamily: "inherit" }}>
                     APPROVE &amp; PUBLISH →
                   </button>
-                  <button onClick={onReject} style={{ width: "100%", padding: "10px", borderRadius: 10, fontSize: 10, letterSpacing: "0.08em", background: "transparent", border: "1px solid rgba(238,129,114,0.25)", color: "var(--aire-coral)", cursor: "pointer", fontFamily: "inherit" }}>
+                  <button onClick={onReject} style={{ width: "100%", padding: "10px", borderRadius: 10, fontSize: 10, letterSpacing: "0.08em", background: "transparent", border: "1px solid var(--accent-soft)", color: "var(--aire-coral)", cursor: "pointer", fontFamily: "inherit" }}>
                     ✕ REJECT
                   </button>
                 </div>
@@ -263,7 +263,7 @@ function PreviewModal({ draft, onClose, onApprove, onReject, onSaveCaption }: {
                         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                           {Object.entries(rationale.captionRationale.complianceCheck).map(([k, v]) => (
                             <div key={k} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-                              <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 4, background: v?.toString().startsWith("CLEAR") ? "rgba(100,200,120,0.15)" : "rgba(238,129,114,0.15)", color: v?.toString().startsWith("CLEAR") ? "#64c878" : "var(--aire-coral)", fontWeight: 700, flexShrink: 0, letterSpacing: "0.04em" }}>
+                              <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 4, background: v?.toString().startsWith("CLEAR") ? "rgba(100,200,120,0.15)" : "var(--accent-soft)", color: v?.toString().startsWith("CLEAR") ? "#64c878" : "var(--aire-coral)", fontWeight: 700, flexShrink: 0, letterSpacing: "0.04em" }}>
                                 {k === "fairHousing" ? "FAIR HOUSING" : k === "louisianaRE" ? "LA RE LAW" : "FLAGGED"}
                               </span>
                               <p style={{ fontSize: 11, color: "var(--aire-text-2)", lineHeight: 1.5, margin: 0 }}>{v as string}</p>
@@ -281,7 +281,7 @@ function PreviewModal({ draft, onClose, onApprove, onReject, onSaveCaption }: {
                       <p style={{ fontSize: 11, color: "var(--aire-muted)", marginBottom: 6, fontFamily: "monospace", letterSpacing: "0.02em" }}>{rationale.photoRationale.selected}</p>
                       <p style={{ fontSize: 12, color: "var(--aire-text-2)", lineHeight: 1.65, margin: "0 0 10px" }}>{rationale.photoRationale.why}</p>
                       {rationale.photoRationale.engagementNote && (
-                        <div style={{ padding: "10px 12px", borderRadius: 8, background: "rgba(238,129,114,0.07)", border: "1px solid rgba(238,129,114,0.2)" }}>
+                        <div style={{ padding: "10px 12px", borderRadius: 8, background: "var(--accent-soft)", border: "1px solid var(--accent-soft)" }}>
                           <p style={{ fontSize: 11, color: "var(--aire-coral)", lineHeight: 1.5, margin: 0 }}>📈 {rationale.photoRationale.engagementNote}</p>
                         </div>
                       )}
@@ -423,7 +423,7 @@ export default function SocialDraftsPage() {
           {pending.map(d => (
             <div key={d.id} onClick={() => setPreviewDraft(d)}
               style={{ background: "var(--aire-card)", borderRadius: 16, border: "1px solid var(--aire-border)", overflow: "hidden", cursor: "pointer", opacity: busy === d.id ? 0.6 : 1, transition: "transform 150ms, border-color 150ms, box-shadow 150ms" }}
-              onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.borderColor = "var(--aire-coral)"; e.currentTarget.style.boxShadow = "0 8px 32px rgba(238,129,114,0.12)"; }}
+              onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.borderColor = "var(--aire-coral)"; e.currentTarget.style.boxShadow = "0 8px 32px var(--accent-soft)"; }}
               onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.borderColor = "var(--aire-border)"; e.currentTarget.style.boxShadow = "none"; }}
             >
               {d.imageUrl
@@ -439,7 +439,7 @@ export default function SocialDraftsPage() {
                       try {
                         const fn = d.feedbackNote ? JSON.parse(d.feedbackNote) : null;
                         if (fn?.track === "A") return <span style={{ fontSize: 9, padding: "2px 7px", borderRadius: 4, background: "rgba(114,138,197,0.15)", color: "var(--blue)", fontWeight: 700, letterSpacing: "0.06em" }}>EVENT PAGE</span>;
-                        if (fn?.day) return <span style={{ fontSize: 9, padding: "2px 7px", borderRadius: 4, background: "rgba(238,129,114,0.12)", color: "var(--aire-coral)", fontWeight: 700, letterSpacing: "0.06em" }}>PUBLIC</span>;
+                        if (fn?.day) return <span style={{ fontSize: 9, padding: "2px 7px", borderRadius: 4, background: "var(--accent-soft)", color: "var(--aire-coral)", fontWeight: 700, letterSpacing: "0.06em" }}>PUBLIC</span>;
                       } catch { return null; }
                       return null;
                     })()}
@@ -448,7 +448,7 @@ export default function SocialDraftsPage() {
                 </div>
                 <p style={{ fontSize: 12, color: "var(--aire-text-2)", lineHeight: 1.5, margin: 0 }}>{d.caption.slice(0, 90)}{d.caption.length > 90 ? "…" : ""}</p>
                 <div style={{ display: "flex", gap: 8 }}>
-                  <div style={{ flex: 1, padding: "7px 10px", borderRadius: 8, background: "rgba(238,129,114,0.08)", border: "1px solid rgba(238,129,114,0.2)", fontSize: 9, color: "var(--aire-coral)", letterSpacing: "0.08em", textAlign: "center" as const }}>
+                  <div style={{ flex: 1, padding: "7px 10px", borderRadius: 8, background: "var(--accent-soft)", border: "1px solid var(--accent-soft)", fontSize: 9, color: "var(--aire-coral)", letterSpacing: "0.08em", textAlign: "center" as const }}>
                     PREVIEW & APPROVE →
                   </div>
                   {d.feedbackNote && (

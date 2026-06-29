@@ -295,16 +295,16 @@ function CreatePost() {
                   <div style={{
                     width: 36, height: 36, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center",
                     fontWeight: 800, fontSize: 16, fontFamily: "var(--font-display-app)",
-                    background: quality.grade === "A" ? "rgba(74,222,128,0.15)" : quality.grade === "B" ? "rgba(134,239,172,0.15)" : "rgba(238,129,114,0.15)",
-                    color: quality.grade === "A" ? "#16a34a" : quality.grade === "B" ? "#15803d" : "#EE8172",
-                    border: `1px solid ${quality.grade === "A" ? "rgba(74,222,128,0.3)" : quality.grade === "B" ? "rgba(134,239,172,0.3)" : "rgba(238,129,114,0.3)"}`,
+                    background: quality.grade === "A" ? "rgba(74,222,128,0.15)" : quality.grade === "B" ? "rgba(134,239,172,0.15)" : "var(--accent-soft)",
+                    color: quality.grade === "A" ? "#16a34a" : quality.grade === "B" ? "#15803d" : "var(--status-urgent)",
+                    border: `1px solid ${quality.grade === "A" ? "rgba(74,222,128,0.3)" : quality.grade === "B" ? "rgba(134,239,172,0.3)" : "var(--accent-soft)"}`,
                   }}>{quality.grade}</div>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontSize: 12, fontWeight: 700, color: "var(--aire-text)" }}>
                       Quality Score: {quality.score}/100
                     </div>
                     {quality.flags.length > 0 ? (
-                      <div style={{ fontSize: 10.5, color: quality.flags.some(f => f.severity === "error") ? "#EE8172" : "var(--aire-muted)", marginTop: 2 }}>
+                      <div style={{ fontSize: 10.5, color: quality.flags.some(f => f.severity === "error") ? "var(--status-urgent)" : "var(--aire-muted)", marginTop: 2 }}>
                         {quality.flags.map(f => f.detail).slice(0, 2).join(" · ")}
                         {quality.flags.length > 2 && ` +${quality.flags.length - 2} more`}
                       </div>
@@ -321,13 +321,13 @@ function CreatePost() {
                         cursor: "pointer", letterSpacing: "0.06em",
                       }}>✓ USE IT</button>
                       <button onClick={() => sendFeedback("rejected")} style={{
-                        padding: "6px 14px", borderRadius: 8, border: "1px solid rgba(238,129,114,0.4)",
-                        background: "rgba(238,129,114,0.08)", color: "#EE8172", fontSize: 11, fontWeight: 700,
+                        padding: "6px 14px", borderRadius: 8, border: "1px solid var(--accent-soft)",
+                        background: "var(--status-urgent-soft)", color: "var(--status-urgent)", fontSize: 11, fontWeight: 700,
                         cursor: "pointer", letterSpacing: "0.06em",
                       }}>✗ REDO</button>
                     </div>
                   ) : (
-                    <div style={{ fontSize: 11, fontWeight: 700, color: feedbackSent === "approved" ? "#16a34a" : "#EE8172", letterSpacing: "0.06em" }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: feedbackSent === "approved" ? "#16a34a" : "var(--status-urgent)", letterSpacing: "0.06em" }}>
                       {feedbackSent === "approved" ? "✓ Logged — engine learns from this" : "✗ Noted — engine will adjust"}
                     </div>
                   )}

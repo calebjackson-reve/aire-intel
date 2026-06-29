@@ -19,11 +19,11 @@ function getInitials(name: string): string {
 // Deterministic color from name — always the same for the same person
 function getGradient(name: string): string {
   const gradients = [
-    "linear-gradient(135deg, #EE8172 0%, #EFDD84 100%)",  // coral → cream
+    "linear-gradient(135deg, var(--accent) 0%, #EFDD84 100%)",  // coral → cream
     "linear-gradient(135deg, #728AC5 0%, #6EE7B7 100%)",  // blue → mint
-    "linear-gradient(135deg, #EE8172 0%, #728AC5 100%)",  // coral → blue
+    "linear-gradient(135deg, var(--accent) 0%, #728AC5 100%)",  // coral → blue
     "linear-gradient(135deg, #EFDD84 0%, #6EE7B7 100%)",  // cream → mint
-    "linear-gradient(135deg, #728AC5 0%, #EE8172 100%)",  // blue → coral
+    "linear-gradient(135deg, #728AC5 0%, var(--accent) 100%)",  // blue → coral
   ];
   let hash = 0;
   for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);

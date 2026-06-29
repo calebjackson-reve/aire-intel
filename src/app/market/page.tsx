@@ -53,7 +53,7 @@ function domLabel(dom: number | null) {
   if (dom == null) return null;
   if (dom <= 7) return { label: "New", color: "#4ADE80", bg: "rgba(74,222,128,0.12)" };
   if (dom <= 30) return { label: `${dom}d`, color: "#728AC5", bg: "rgba(114,138,197,0.12)" };
-  if (dom <= 90) return { label: `${dom}d`, color: "#EE8172", bg: "rgba(238,129,114,0.12)" };
+  if (dom <= 90) return { label: `${dom}d`, color: "var(--accent)", bg: "var(--accent-soft)" };
   return { label: `${dom}d`, color: "#9B9B9B", bg: "rgba(155,155,155,0.10)" };
 }
 
@@ -235,7 +235,7 @@ export default function MarketPage() {
               {hotListings.length > 0 && (
                 <div style={{ marginBottom: 28 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-                    <Flame size={14} color="#EE8172" />
+                    <Flame size={14} color="var(--accent)" />
                     <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", color: "var(--aire-text-2)", fontFamily: "var(--font-sans-app)" }}>
                       JUST LISTED
                     </span>
@@ -300,7 +300,7 @@ function HotCard({ listing, selected, onSelect, onUseForContent }: {
       border: `1.5px solid ${selected ? "var(--aire-coral)" : "var(--aire-border)"}`,
       background: "var(--aire-card)", cursor: "pointer",
       transition: "border-color 0.15s, box-shadow 0.15s",
-      boxShadow: selected ? "0 0 0 3px rgba(238,129,114,0.15)" : "0 2px 8px rgba(0,0,0,0.05)",
+      boxShadow: selected ? "0 0 0 3px var(--accent-soft)" : "0 2px 8px rgba(0,0,0,0.05)",
     }}>
       {/* Photo / gradient banner */}
       <div style={{
@@ -363,7 +363,7 @@ function GridCard({ listing, selected, onSelect, onUseForContent }: {
       border: `1.5px solid ${selected ? "var(--aire-coral)" : "var(--aire-border)"}`,
       background: "var(--aire-card)", cursor: "pointer",
       transition: "border-color 0.15s, box-shadow 0.15s, transform 0.15s",
-      boxShadow: selected ? "0 0 0 3px rgba(238,129,114,0.12)" : "0 1px 6px rgba(0,0,0,0.04)",
+      boxShadow: selected ? "0 0 0 3px var(--accent-soft)" : "0 1px 6px rgba(0,0,0,0.04)",
     }}>
       {/* Photo / gradient banner */}
       <div style={{ height: 130, background: listing.photos?.[0] ? undefined : cardGradient(listing.propertyType), position: "relative" }}>
@@ -386,7 +386,7 @@ function GridCard({ listing, selected, onSelect, onUseForContent }: {
             }}>{dom.label === "New" ? "✦ NEW" : `${dom.label} DOM`}</span>
           )}
           {listing.source === "rentcast" && (
-            <span style={{ fontSize: 8, fontWeight: 700, letterSpacing: "0.04em", background: "rgba(238,129,114,0.8)", color: "#fff", padding: "2px 5px", borderRadius: 4 }}>MLS</span>
+            <span style={{ fontSize: 8, fontWeight: 700, letterSpacing: "0.04em", background: "var(--accent-soft)", color: "#fff", padding: "2px 5px", borderRadius: 4 }}>MLS</span>
           )}
         </div>
         <div style={{ position: "absolute", top: 8, right: 8, display: "flex", gap: 4 }} onClick={e => e.stopPropagation()}>
@@ -442,7 +442,7 @@ function ListRow({ listing, selected, onSelect, onUseForContent }: {
     <div onClick={onSelect} style={{
       display: "flex", alignItems: "center", gap: 12, padding: "10px 14px",
       borderRadius: 12, border: `1.5px solid ${selected ? "var(--aire-coral)" : "var(--aire-border)"}`,
-      background: selected ? "rgba(238,129,114,0.04)" : "var(--aire-card)", cursor: "pointer",
+      background: selected ? "var(--accent-soft)" : "var(--aire-card)", cursor: "pointer",
       transition: "all 0.15s",
     }}>
       {/* Thumb */}
@@ -518,7 +518,7 @@ function GoogleMapEmbed({ listings, selectedId, onSelect }: {
         if (status !== "OK" || !results[0]) return;
         const marker = new window.google.maps.Marker({
           position: results[0].geometry.location, map, title: l.address,
-          icon: { path: window.google.maps.SymbolPath.CIRCLE, scale: 8, fillColor: selectedId === l.id ? "#EE8172" : "#09090B", fillOpacity: 1, strokeColor: "#fff", strokeWeight: 2 },
+          icon: { path: window.google.maps.SymbolPath.CIRCLE, scale: 8, fillColor: selectedId === l.id ? "var(--accent)" : "#09090B", fillOpacity: 1, strokeColor: "#fff", strokeWeight: 2 },
         });
         marker.addListener("click", () => onSelect(l.id));
       });

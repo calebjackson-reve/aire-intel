@@ -64,6 +64,7 @@ model Lead {
   photoUrl        String?   // cached profile picture URL
   // Meta
   notes           String?
+  workspaceId     String    @default("default")
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
@@ -171,6 +172,7 @@ model Task {
   done        Boolean   @default(false)
   doneAt      DateTime?
   assignedTo  String?
+  workspaceId String    @default("default")
   createdAt   DateTime  @default(now())
 }
 
@@ -235,6 +237,7 @@ model DailyBrief {
   pushDeliveredAt  DateTime?
   assembledAt      DateTime  @default(now())
   agentRunId       String?
+  workspaceId      String    @default("default")
 }
 
 model ActionQueue {
@@ -254,6 +257,7 @@ model ActionQueue {
   failedAt         DateTime?
   failReason       String?
   scheduledFor     DateTime?
+  workspaceId      String    @default("default")
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
@@ -272,6 +276,7 @@ model AgentRun {
   actionsQueued  Int       @default(0)
   errorLog       Json?
   durationMs     Int?
+  workspaceId    String    @default("default")
 
   @@index([agentType, startedAt])
 }
@@ -901,4 +906,78 @@ model IMessageMessage {
   createdAt DateTime       @default(now())
 
   @@index([threadId, sentAt])
+}
+
+
+// ── Phase 1 — Cron Dispatcher ─────────────────────────────────────────────
+
+model CronTrigger {
+  id         String    @id @default(cuid())
+  slug       String    @unique       // e.g. "morning-brief"
+  path       String                  // full API path e.g. "/api/agents/morning-brief"
+  schedule   String                  // original cron expression (documentation only)
+  group      String                  // frequent | hourly | daily | weekly
+  intervalMs Int                     // milliseconds — dispatcher uses this, not the schedule string
+  enabled    Boolean   @default(true)
+  lastRunAt  DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([group, enabled, lastRunAt])
+}
+
+// ── Phase 1 — Brain Seam (v0) ─────────────────────────────────────────────
+// The Brain is a derived, rebuildable projection of operational tables.
+// Tables = system of record. Brain = semantic intelligence layer.
+// Every node points BACK to its source row via refTable/refId — no dual-write.
+
+model Node {
+  id          String    @id @default(cuid())
+  kind        String    // Person | Property | Deal | Document | Content | Event | Communication | Task | Goal | MarketSignal | Preference | Decision
+  label       String    // human-readable name
+  refTable    String?   // Prisma model name e.g. "Lead", "ContentProject"
+  refId       String?   // the operational row's id
+  workspaceId String    @default("default")
+  confidence  Float     @default(0.8)
+  status      String    @default("active") // active | superseded | retracted | disputed
+  tier        String    @default("hot")    // hot (active) | warm (1-3y) | cold (>3y)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  observations Observation[]
+
+  @@index([kind, workspaceId])
+  @@index([refTable, refId])
+}
+
+model Observation {
+  id          String    @id @default(cuid())
+  nodeId      String?
+  node        Node?     @relation(fields: [nodeId], references: [id])
+  sourceKind  String    // lead | contact_log | email | lofty | mls | meta | jarvis | agent | manual
+  sourceRef   String    // external or internal ID — dedup key
+  eventType   String    // stage_change | message_sent | listing_viewed | brief_item | etc.
+  text        String    // raw observation text — what happened
+  facts       Json?     // extracted structured facts (populated by enrichment agent)
+  workspaceId String    @default("default")
+  confidence  Float     @default(0.8)
+  recordedAt  DateTime  @default(now())
+
+  @@unique([sourceKind, sourceRef])
+  @@index([nodeId, recordedAt])
+  @@index([workspaceId, eventType])
+}
+
+model DomainEvent {
+  id          String    @id @default(cuid())
+  aggregate   String    // Lead | ActionQueue | AgentRun | etc.
+  aggregateId String
+  eventType   String    // created | updated | stage_changed | acted | etc.
+  payload     Json
+  workspaceId String    @default("default")
+  createdAt   DateTime  @default(now())
+  publishedAt DateTime?
+  ackdAt      DateTime?
+
+  @@index([aggregate, aggregateId, publishedAt])
+  @@index([workspaceId, eventType, createdAt])
 }

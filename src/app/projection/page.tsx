@@ -117,12 +117,12 @@ export default function ProjectionPage() {
           <div className="pj-stack">
             <span style={{ width: `${closedPct}%`, background: "var(--aire-mint)" }} />
             <span style={{ width: `${weightedPct}%`, background: "var(--cream)" }} />
-            <span style={{ width: `${gapPct}%`, background: "rgba(238,129,114,.5)" }} />
+            <span style={{ width: `${gapPct}%`, background: "var(--accent-soft)" }} />
           </div>
           <div className="pj-legend">
             <div className="pj-lg"><span className="sw" style={{ background: "var(--aire-mint)" }} />Closed <b>{fmtK(closed.gci)}</b></div>
             <div className="pj-lg"><span className="sw" style={{ background: "var(--cream)" }} />Weighted pipeline <b>{fmtK(weightedPipeline)}</b></div>
-            <div className="pj-lg"><span className="sw" style={{ background: "rgba(238,129,114,.7)" }} />Gap to goal <b>{fmtK(gap)}</b></div>
+            <div className="pj-lg"><span className="sw" style={{ background: "var(--accent)" }} />Gap to goal <b>{fmtK(gap)}</b></div>
           </div>
         </section>
 

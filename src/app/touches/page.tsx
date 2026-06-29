@@ -45,7 +45,7 @@ const PLATFORM_ICON: Record<string, string> = {
 
 function cellColor(cell: PlatformCell): string {
   if (!cell) return "var(--text-dim, #6b7280)";
-  if (cell.daysAgo <= 7) return "var(--reve-coral, #EE8172)";
+  if (cell.daysAgo <= 7) return "var(--accent)";
   if (cell.daysAgo <= 30) return "var(--reve-cream, #EFDD84)";
   return "var(--text-dim, #6b7280)";
 }
@@ -100,7 +100,7 @@ export default function TouchesPage() {
         </p>
         <div style={{ display: "flex", gap: 12, marginTop: 16, alignItems: "center" }}>
           <span style={{ fontSize: 13, color: "var(--text-dim, #9ca3af)" }}>
-            <strong style={{ color: "var(--reve-coral, #EE8172)" }}>{data.counts.overdue}</strong> overdue
+            <strong style={{ color: "var(--accent)" }}>{data.counts.overdue}</strong> overdue
             {" · "}
             {data.counts.total} tracked
           </span>
@@ -148,9 +148,9 @@ export default function TouchesPage() {
                 </td>
                 <td style={{ padding: "12px 8px" }}>
                   {r.daysSinceAny === null ? (
-                    <span style={{ color: "var(--reve-coral, #EE8172)" }}>never</span>
+                    <span style={{ color: "var(--accent)" }}>never</span>
                   ) : (
-                    <span style={{ color: r.overdue ? "var(--reve-coral, #EE8172)" : "inherit" }}>
+                    <span style={{ color: r.overdue ? "var(--accent)" : "inherit" }}>
                       {r.daysSinceAny}d ago
                       {r.overdue && r.overdueBy && r.overdueBy > 0 ? ` (+${r.overdueBy})` : ""}
                     </span>

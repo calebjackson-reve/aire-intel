@@ -338,7 +338,7 @@ export default function ColdFollowUpBlastPage() {
                       padding: "14px 18px",
                       background: isChecked ? "var(--aire-card-warm)" : "var(--aire-card)",
                       border: "1px solid",
-                      borderColor: isChecked ? "rgba(238,129,114,0.45)" : "var(--aire-border)",
+                      borderColor: isChecked ? "var(--accent-soft)" : "var(--aire-border)",
                       borderRadius: "12px",
                       cursor: "pointer",
                       transition: "border-color 150ms, background 150ms",
@@ -430,7 +430,7 @@ export default function ColdFollowUpBlastPage() {
                   cursor: selected.size === 0 || drafting ? "not-allowed" : "pointer",
                   boxShadow:
                     selected.size > 0 && !drafting
-                      ? "0 8px 24px rgba(238,129,114,0.25)"
+                      ? "0 8px 24px var(--accent-soft)"
                       : "none",
                 }}
               >
@@ -586,7 +586,7 @@ function DraftCard({
         borderColor: result
           ? fullSuccess
             ? "rgba(184,230,208,0.55)"
-            : "rgba(238,129,114,0.30)"
+            : "var(--accent-soft)"
           : "var(--aire-border)",
         borderRadius: "14px",
         padding: "18px",

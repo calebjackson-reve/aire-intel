@@ -45,7 +45,7 @@ interface ImportResult {
 
 // ─── Constants ─────────────────────────────────────────────────────────────
 const SOURCE_COLOR: Record<string, string> = {
-  lead: "var(--reve-coral, #EE8172)",
+  lead: "var(--reve-coral, var(--accent))",
   facebook: "#1877F2",
   instagram: "#E1306C",
   contacts: "var(--reve-cream, #EFDD84)",
@@ -124,7 +124,7 @@ function PersonCard({ person, onTouch }: { person: Person; onTouch: (id: string,
             </div>
           )}
           {days !== null && (
-            <div style={{ fontSize: 11, color: days > 30 ? "var(--reve-coral, #EE8172)" : "var(--text-dim, #9ca3af)", marginTop: 1 }}>
+            <div style={{ fontSize: 11, color: days > 30 ? "var(--reve-coral, var(--accent))" : "var(--text-dim, #9ca3af)", marginTop: 1 }}>
               {days === 0 ? "touched today" : `${days}d ago`}
             </div>
           )}
@@ -206,7 +206,7 @@ function ImportDrawer({ onImported }: { onImported: (r: ImportResult) => void })
               Drop any of these files and AIRE matches them to your CRM automatically:
             </p>
             <ul style={{ fontSize: 12, color: "var(--text-dim, #9ca3af)", marginBottom: 20, lineHeight: 2, paddingLeft: 16 }}>
-              <li><strong style={{ color: "inherit" }}>Facebook:</strong> <em>friends.json</em> or <em>friends.html</em> from <a href="https://www.facebook.com/dyi" target="_blank" rel="noreferrer" style={{ color: "var(--reve-coral, #EE8172)" }}>facebook.com/dyi</a> → Your Information → Friends</li>
+              <li><strong style={{ color: "inherit" }}>Facebook:</strong> <em>friends.json</em> or <em>friends.html</em> from <a href="https://www.facebook.com/dyi" target="_blank" rel="noreferrer" style={{ color: "var(--reve-coral, var(--accent))" }}>facebook.com/dyi</a> → Your Information → Friends</li>
               <li><strong style={{ color: "inherit" }}>Instagram:</strong> <em>followers.json</em> or <em>following.json</em> from Instagram Settings → Your Activity → Download Your Information</li>
               <li><strong style={{ color: "inherit" }}>Phone Contacts:</strong> Export all contacts as <em>.vcf</em> from the Contacts app (File → Export → Export vCard)</li>
             </ul>
@@ -221,7 +221,7 @@ function ImportDrawer({ onImported }: { onImported: (r: ImportResult) => void })
               <input ref={fileRef} type="file" accept=".json,.html,.vcf" style={{ display: "none" }} onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }} />
             </div>
 
-            {error && <p style={{ color: "var(--reve-coral, #EE8172)", marginTop: 12, fontSize: 13 }}>{error}</p>}
+            {error && <p style={{ color: "var(--reve-coral, var(--accent))", marginTop: 12, fontSize: 13 }}>{error}</p>}
 
             {result && (
               <div style={{ marginTop: 16, padding: 14, background: "rgba(255,255,255,0.05)", borderRadius: 8, fontSize: 13 }}>

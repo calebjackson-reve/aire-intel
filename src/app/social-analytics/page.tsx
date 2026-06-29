@@ -54,7 +54,7 @@ interface SocialExport {
 
 const ORANGE = "#FB7A01";
 const GREEN = "#2C7A5C";
-const CHART_COLORS = [ORANGE, GREEN, "#3B82F6", "#8B5CF6", "#EC4899", "#F59E0B"];
+const CHART_COLORS = [ORANGE, GREEN, "#3B82F6", "#8B5CF6", "#EC4899", "var(--status-warm)"];
 
 const POST_TYPE_LABELS: Record<string, string> = {
   just_listed: "Just Listed",
@@ -82,7 +82,7 @@ function KPICard({ label, value, delta, sub }: { label: string; value: string; d
       <div style={{ fontSize: 10, letterSpacing: "0.14em", color: "var(--aire-muted)", marginBottom: 4 }}>{label}</div>
       <div style={{ fontSize: 26, fontWeight: 700, color: "var(--aire-text)", letterSpacing: "-0.02em" }}>{value}</div>
       {(delta !== undefined || sub) && (
-        <div style={{ fontSize: 11, color: delta !== undefined && delta > 0 ? GREEN : delta !== undefined && delta < 0 ? "#EE8172" : "var(--aire-muted)", marginTop: 3 }}>
+        <div style={{ fontSize: 11, color: delta !== undefined && delta > 0 ? GREEN : delta !== undefined && delta < 0 ? "var(--accent)" : "var(--aire-muted)", marginTop: 3 }}>
           {delta !== undefined ? `${delta > 0 ? "▲" : "▼"} ${Math.abs(Math.round(delta))}%` : ""}
           {sub && (delta !== undefined ? " · " : "") + sub}
         </div>
@@ -234,7 +234,7 @@ export default function SocialAnalyticsPage() {
               {importing ? (
                 <p style={{ fontSize: 13, color: "var(--aire-orange)" }}>Importing… this may take a moment.</p>
               ) : importResult ? (
-                <p style={{ fontSize: 13, color: importResult.includes("failed") ? "#EE8172" : GREEN }}>{importResult}</p>
+                <p style={{ fontSize: 13, color: importResult.includes("failed") ? "var(--accent)" : GREEN }}>{importResult}</p>
               ) : (
                 <label style={{
                   display: "block", border: "2px dashed var(--aire-border)", borderRadius: 12, padding: "32px 24px",

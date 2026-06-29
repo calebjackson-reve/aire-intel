@@ -26,7 +26,7 @@ const COLORS = {
     pill: "pill-coral",
     fg: "var(--aire-coral-deep)",
     bg: "var(--aire-coral-soft)",
-    border: "rgba(238,129,114,0.30)",
+    border: "var(--accent-soft)",
   },
   yellow: {
     pill: "pill-cream",

@@ -185,7 +185,7 @@ function LeadRow({ lead }: { lead: HotLead }) {
               borderRadius: "999px",
               background: "var(--aire-card)",
               color: "var(--aire-coral)",
-              border: "1px solid rgba(238,129,114,0.30)",
+              border: "1px solid var(--accent-soft)",
               textDecoration: "none",
               whiteSpace: "nowrap",
             }}

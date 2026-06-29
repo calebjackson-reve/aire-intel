@@ -56,8 +56,8 @@ export class ErrorBoundary extends Component<Props, State> {
       }}>
         <div style={{
           maxWidth: "500px", textAlign: "center",
-          background: "rgba(238,129,114,0.04)",
-          border: "1px solid rgba(238,129,114,0.15)",
+          background: "var(--accent-soft)",
+          border: "1px solid var(--accent-soft)",
           borderRadius: "12px",
           padding: "32px",
         }}>

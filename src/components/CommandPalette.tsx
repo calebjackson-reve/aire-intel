@@ -277,15 +277,15 @@ export default function CommandPalette() {
                 gap: "10px",
                 padding: "11px 16px",
                 cursor: "pointer",
-                background: selected === allItems.length ? "rgba(238,129,114,0.08)" : "transparent",
-                borderLeft: selected === allItems.length ? "2px solid #EE8172" : "2px solid transparent",
+                background: selected === allItems.length ? "var(--accent-soft)" : "transparent",
+                borderLeft: selected === allItems.length ? "2px solid var(--accent)" : "2px solid transparent",
                 borderTop: "1px solid var(--aire-border)",
                 transition: "background 100ms",
               }}
             >
               <span style={{
                 fontSize: "13px",
-                color: "#EE8172",
+                color: "var(--accent)",
                 fontWeight: 600,
                 flexShrink: 0,
               }}>✦</span>

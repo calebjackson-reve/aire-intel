@@ -27,8 +27,8 @@ const VARIANTS: Record<CardVariant, CSSProperties> = {
   default: { background: "var(--aire-card)" },
   warm:    { background: "var(--aire-card-warm)" },
   ink: {
-    background: "rgba(238,129,114,0.06)",
-    border: "1px solid rgba(238,129,114,0.18)",
+    background: "var(--accent-soft)",
+    border: "1px solid var(--accent-soft)",
   },
   deep: { background: "var(--aire-bg-deep)" },
 };

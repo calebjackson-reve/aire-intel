@@ -66,7 +66,7 @@ export default function ReadyForTCChecklist({ lead, onSendPacket }: Props) {
       style={{
         background: "var(--aire-card)",
         border: allFourDone
-          ? "1px solid rgba(238,129,114,0.30)"
+          ? "1px solid var(--accent-soft)"
           : "1px solid var(--aire-border)",
         borderRadius: "16px",
         padding: "20px",
@@ -186,7 +186,7 @@ export default function ReadyForTCChecklist({ lead, onSendPacket }: Props) {
             fontWeight: 700,
             letterSpacing: "0.1em",
             cursor: "pointer",
-            boxShadow: "0 0 24px rgba(238,129,114,0.30)",
+            boxShadow: "0 0 24px var(--accent-soft)",
             animation: "reve-tc-pulse 2.2s ease-out infinite",
             transition: "background 150ms, transform 150ms",
           }}

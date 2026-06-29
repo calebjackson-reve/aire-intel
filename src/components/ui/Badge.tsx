@@ -20,7 +20,7 @@ const VARIANT_STYLES: Record<BadgeVariant, CSSProperties> = {
   coral: {
     background: "var(--aire-coral-soft)",
     color: "var(--aire-coral)",
-    border: "1px solid rgba(238,129,114,0.20)",
+    border: "1px solid var(--accent-soft)",
   },
   cream: {
     background: "var(--aire-cream-soft)",
@@ -38,9 +38,9 @@ const VARIANT_STYLES: Record<BadgeVariant, CSSProperties> = {
     border: "1px solid var(--aire-border)",
   },
   urgent: {
-    background: "rgba(238,129,114,0.12)",
+    background: "var(--accent-soft)",
     color: "var(--status-urgent)",
-    border: "1px solid rgba(238,129,114,0.25)",
+    border: "1px solid var(--accent-soft)",
   },
   active: {
     background: "rgba(110,231,183,0.10)",

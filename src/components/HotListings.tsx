@@ -217,7 +217,7 @@ export default function HotListings() {
           <a href="/mls" style={{
             flex: 1, textAlign: "center", fontSize: "10px", letterSpacing: "0.14em",
             color: "var(--aire-coral-deep)", textDecoration: "none", padding: "10px",
-            border: "1px solid rgba(238,129,114,0.3)", borderRadius: "8px",
+            border: "1px solid var(--accent-soft)", borderRadius: "8px",
             background: "var(--aire-coral-soft)",
             transition: "background 200ms",
           }}>
@@ -337,7 +337,7 @@ function MyListingsTab() {
   return (
     <div style={{ paddingTop: "24px" }}>
       <div style={{
-        background: "var(--aire-coral-soft)", border: "1px solid rgba(238,129,114,0.25)",
+        background: "var(--aire-coral-soft)", border: "1px solid var(--accent-soft)",
         borderRadius: "12px", padding: "24px", textAlign: "center",
       }}>
         <div style={{ fontSize: "28px", marginBottom: "12px", opacity: 0.7 }}>🏡</div>
@@ -418,7 +418,7 @@ function LeadCard({ lead, index }: { lead: HotLead; index: number }) {
   const isHot = lead.tier === "hot";
   const accentColor = isHot ? "var(--aire-coral-deep)" : "#8a7a18";
   const accentBg = isHot ? "var(--aire-coral-soft)" : "var(--aire-cream-soft)";
-  const accentBorder = isHot ? "rgba(238,129,114,0.25)" : "rgba(239,221,132,0.35)";
+  const accentBorder = isHot ? "var(--accent-soft)" : "rgba(239,221,132,0.35)";
   const touched = daysAgo(lead.lastTouch);
   const initials = lead.name.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase();
 

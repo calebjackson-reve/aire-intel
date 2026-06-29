@@ -159,7 +159,7 @@ export default function DealPage({ params }: { params: Promise<{ id: string }> }
         <Link href="/pipeline" className="dl-crumb"><ArrowLeft /> Pipeline · {statusLabel}</Link>
         <div className="dl-toprow">
           <h1>{lead.address ?? lead.name}</h1>
-          <span className="dl-badge" style={{ color: "var(--coral)", borderColor: "rgba(238,129,114,.45)", background: "rgba(238,129,114,.12)" }}>
+          <span className="dl-badge" style={{ color: "var(--coral)", borderColor: "var(--status-urgent-soft)", background: "var(--status-urgent-soft)" }}>
             <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "var(--coral)" }} />
             {needsYou > 0 ? `${needsYou} needs you` : statusLabel}
           </span>

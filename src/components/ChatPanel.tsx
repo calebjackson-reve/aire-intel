@@ -291,13 +291,13 @@ export default function ChatPanel({ mode = "float" }: { mode?: "float" | "page" 
                     display: "inline-flex", alignItems: "center", gap: 4,
                     fontSize: 10, letterSpacing: "0.06em",
                     padding: "3px 8px", borderRadius: 999,
-                    background: b.status === "running" ? "rgba(238,129,114,0.12)" : "rgba(34,197,94,0.1)",
-                    border: `1px solid ${b.status === "running" ? "rgba(238,129,114,0.3)" : "rgba(34,197,94,0.3)"}`,
-                    color: b.status === "running" ? "#EE8172" : "#16a34a",
+                    background: b.status === "running" ? "var(--accent-soft)" : "rgba(34,197,94,0.1)",
+                    border: `1px solid ${b.status === "running" ? "var(--accent-soft)" : "rgba(34,197,94,0.3)"}`,
+                    color: b.status === "running" ? "var(--accent)" : "#16a34a",
                   }}>
                     <span style={{
                       width: 5, height: 5, borderRadius: "50%",
-                      background: b.status === "running" ? "#EE8172" : "#22c55e",
+                      background: b.status === "running" ? "var(--accent)" : "#22c55e",
                       animation: b.status === "running" ? "pulse-dot 1.2s ease-in-out infinite" : "none",
                     }} />
                     {b.label}
@@ -352,7 +352,7 @@ export default function ChatPanel({ mode = "float" }: { mode?: "float" | "page" 
           style={{
             flex: 1, background: "transparent", border: "none", outline: "none",
             fontSize: 13, color: "var(--aire-text)", fontFamily: "inherit",
-            caretColor: "#EE8172",
+            caretColor: "var(--accent)",
           }}
         />
         <button
@@ -360,7 +360,7 @@ export default function ChatPanel({ mode = "float" }: { mode?: "float" | "page" 
           disabled={!input.trim() || streaming}
           style={{
             width: 28, height: 28, borderRadius: "50%", flexShrink: 0,
-            background: input.trim() && !streaming ? "#EE8172" : "rgba(0,0,0,0.06)",
+            background: input.trim() && !streaming ? "var(--accent)" : "rgba(0,0,0,0.06)",
             border: "none", cursor: input.trim() && !streaming ? "pointer" : "default",
             display: "flex", alignItems: "center", justifyContent: "center",
             transition: "background 0.15s",
@@ -386,7 +386,7 @@ export default function ChatPanel({ mode = "float" }: { mode?: "float" | "page" 
           style={{
             position: "fixed", bottom: 20, right: 20, zIndex: 201,
             width: 44, height: 44, borderRadius: "50%",
-            background: open ? "#EE8172" : streaming ? "#EE8172" : "var(--aire-ink, #09090B)",
+            background: open ? "var(--accent)" : streaming ? "var(--accent)" : "var(--aire-ink, #09090B)",
             border: "none", cursor: "pointer",
             display: "flex", alignItems: "center", justifyContent: "center",
             fontSize: 16, color: "#fff",
@@ -420,7 +420,7 @@ export default function ChatPanel({ mode = "float" }: { mode?: "float" | "page" 
               borderBottom: "1px solid var(--aire-border)",
             }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", color: "#EE8172" }}>AIRE</span>
+                <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", color: "var(--accent)" }}>AIRE</span>
                 <span style={{ fontSize: 10, color: "var(--aire-muted)", background: "var(--aire-card)", border: "1px solid var(--aire-border)", borderRadius: 999, padding: "1px 7px" }}>
                   {streaming ? "thinking…" : "ready"}
                 </span>
@@ -452,12 +452,12 @@ export default function ChatPanel({ mode = "float" }: { mode?: "float" | "page" 
                     onClick={() => { loadThread(t.id); setShowThreads(false); }}
                     style={{
                       width: "100%", textAlign: "left", padding: "8px 16px",
-                      background: t.id === threadId ? "rgba(238,129,114,0.08)" : "none",
+                      background: t.id === threadId ? "var(--accent-soft)" : "none",
                       border: "none", cursor: "pointer",
                       borderBottom: "1px solid var(--aire-border)",
                     }}
                     onMouseEnter={e => (e.currentTarget.style.background = "rgba(0,0,0,0.03)")}
-                    onMouseLeave={e => (e.currentTarget.style.background = t.id === threadId ? "rgba(238,129,114,0.08)" : "none")}
+                    onMouseLeave={e => (e.currentTarget.style.background = t.id === threadId ? "var(--accent-soft)" : "none")}
                   >
                     <div style={{ fontSize: 12, color: "var(--aire-text)", fontWeight: 500, marginBottom: 2 }}>
                       {t.title ?? "Untitled"}
@@ -501,8 +501,8 @@ export default function ChatPanel({ mode = "float" }: { mode?: "float" | "page" 
             onClick={() => loadThread(t.id)}
             style={{
               width: "100%", textAlign: "left", padding: "8px 12px",
-              background: t.id === threadId ? "rgba(238,129,114,0.08)" : "none",
-              border: "none", borderLeft: `2px solid ${t.id === threadId ? "#EE8172" : "transparent"}`,
+              background: t.id === threadId ? "var(--accent-soft)" : "none",
+              border: "none", borderLeft: `2px solid ${t.id === threadId ? "var(--accent)" : "transparent"}`,
               cursor: "pointer",
             }}
           >

@@ -113,7 +113,7 @@ export function DropboxPicker({ onSelect, onClose }: Props) {
         {/* Body */}
         <div style={{ flex: 1, overflowY: "auto", padding: "16px 20px" }}>
           {error && (
-            <div style={{ padding: "12px 16px", borderRadius: 10, background: "rgba(238,129,114,0.1)", border: "1px solid rgba(238,129,114,0.25)", marginBottom: 16 }}>
+            <div style={{ padding: "12px 16px", borderRadius: 10, background: "var(--accent-soft)", border: "1px solid var(--accent-soft)", marginBottom: 16 }}>
               <p style={{ fontSize: 12, color: "var(--aire-coral)" }}>{error}</p>
               {error.includes("scope") && (
                 <p style={{ fontSize: 11, color: "var(--aire-muted)", marginTop: 6 }}>

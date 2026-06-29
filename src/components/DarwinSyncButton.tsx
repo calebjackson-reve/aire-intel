@@ -109,15 +109,15 @@ export default function DarwinSyncButton({ onSynced }: { onSynced?: () => void }
             right: "20px",
             zIndex: 300,
             background: "var(--reve-surface)",
-            border: "1px solid rgba(238,129,114,0.4)",
-            borderLeft: "3px solid #EE8172",
+            border: "1px solid var(--accent-soft)",
+            borderLeft: "3px solid var(--accent)",
             borderRadius: "8px",
             padding: "16px 20px",
             maxWidth: "340px",
             cursor: "pointer",
           }}
         >
-          <p style={{ fontSize: "10px", letterSpacing: "0.18em", color: "#EE8172", marginBottom: "8px" }}>DARWIN IMPORT FAILED</p>
+          <p style={{ fontSize: "10px", letterSpacing: "0.18em", color: "var(--accent)", marginBottom: "8px" }}>DARWIN IMPORT FAILED</p>
           <p style={{ fontSize: "13px", color: "var(--reve-text)" }}>{error}</p>
         </div>
       )}

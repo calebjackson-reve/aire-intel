@@ -576,7 +576,7 @@ export default function ContactProfile() {
           padding: "14px 18px",
           borderRadius: 12,
           border: `1px solid ${skipResult.error ? "var(--aire-coral)" : "var(--aire-green)"}`,
-          background: skipResult.error ? "rgba(238,129,114,0.06)" : "rgba(74,222,128,0.06)",
+          background: skipResult.error ? "var(--accent-soft)" : "rgba(74,222,128,0.06)",
           fontSize: 12, fontFamily: "var(--font-sans-app)",
           display: "flex", flexDirection: "column", gap: 6,
         }}>

@@ -50,7 +50,7 @@ interface Mission {
 // Tokens for the ink-card luxury surface. These are the literal hex/rgba
 // values matched to the CSS tokens in globals.css so inline styles stay
 // in lockstep with utility classes (.card-ink, .btn-coral, .pill-coral).
-const CORAL = "#EE8172";
+const CORAL = "var(--accent)";
 const CREAM = "#EFDD84";
 const TEXT_INV = "#FAF6EE"; // var(--aire-text-inv)
 const MUTED_INV = "rgba(250,246,238,0.55)"; // var(--aire-muted-inv)

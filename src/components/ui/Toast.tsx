@@ -22,7 +22,7 @@ export function useToast() {
 
 const COLORS: Record<ToastVariant, { bg: string; border: string; dot: string }> = {
   success: { bg: "var(--aire-card-warm)", border: "rgba(110,231,183,0.30)", dot: "var(--aire-mint)" },
-  error:   { bg: "var(--aire-card-warm)", border: "rgba(238,129,114,0.30)", dot: "var(--aire-coral)" },
+  error:   { bg: "var(--aire-card-warm)", border: "var(--accent-soft)", dot: "var(--aire-coral)" },
   warning: { bg: "var(--aire-card-warm)", border: "rgba(239,221,132,0.30)", dot: "var(--aire-cream)" },
   info:    { bg: "var(--aire-card-warm)", border: "var(--aire-border-2)",   dot: "var(--aire-text-2)" },
 };

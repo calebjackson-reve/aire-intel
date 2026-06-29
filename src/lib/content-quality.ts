@@ -159,7 +159,7 @@ function extractSection(raw: string, sectionName: string): string {
 }
 
 export function gradeColor(grade: QualityResult["grade"]): string {
-  return { A: "#4ADE80", B: "#86efac", C: "#EE8172", D: "#f87171", F: "#dc2626" }[grade];
+  return { A: "#4ADE80", B: "#86efac", C: "var(--accent)", D: "#f87171", F: "#dc2626" }[grade];
 }
 
 export function scoreReelHook(hook: string): QualityResult {

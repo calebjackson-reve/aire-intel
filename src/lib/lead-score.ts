@@ -155,7 +155,7 @@ export function scoreLevelColor(level: ScoreLevel): string {
 /** Score badge background */
 export function scoreLevelBg(level: ScoreLevel): string {
   return {
-    hot:  "rgba(238,129,114,0.12)",
+    hot:  "var(--accent-soft)",
     warm: "rgba(239,221,132,0.10)",
     cool: "var(--aire-card-warm)",
     cold: "var(--status-cold)",

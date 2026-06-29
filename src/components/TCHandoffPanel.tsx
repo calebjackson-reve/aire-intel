@@ -134,7 +134,7 @@ export default function TCHandoffPanel() {
               fontSize: "12px",
               fontWeight: 600,
               textDecoration: "none",
-              border: "1px solid rgba(238,129,114,0.30)",
+              border: "1px solid var(--accent-soft)",
             }}
           >
             Configure TC →

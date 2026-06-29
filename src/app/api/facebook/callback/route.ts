@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
   if (error || !code) {
     return new Response(
       `<html><body style="font-family:sans-serif;padding:40px;background:#f5f0ea">
-        <h2 style="color:#EE8172">Facebook connection failed</h2>
+        <h2 style="color:var(--accent)">Facebook connection failed</h2>
         <p>${error ?? "No code returned"}</p>
         <a href="/settings">← Back to Settings</a>
       </body></html>`,
@@ -83,12 +83,12 @@ export async function GET(req: NextRequest) {
       `<html><head><meta http-equiv="refresh" content="4;url=/messenger-outreach"></head>
       <body style="font-family:-apple-system,sans-serif;padding:48px;background:#f5f0ea;color:#111827">
         <div style="max-width:520px;margin:0 auto;background:#fff;border-radius:16px;padding:32px;box-shadow:0 4px 24px rgba(0,0,0,0.08)">
-          <p style="font-size:11px;letter-spacing:0.1em;color:#EE8172;font-weight:700;text-transform:uppercase;margin:0 0 12px">Connected ✓</p>
+          <p style="font-size:11px;letter-spacing:0.1em;color:var(--accent);font-weight:700;text-transform:uppercase;margin:0 0 12px">Connected ✓</p>
           <h2 style="font-size:20px;font-weight:700;margin:0 0 8px">Token saved for ${targetPage.name}</h2>
           <p style="font-size:13px;color:#6B7280;margin:0 0 20px">Long-lived page access token written to .env. Redirecting to Messenger Outreach in 4 seconds…</p>
           <p style="font-size:11px;color:#9CA3AF;margin:0 0 8px">Pages on this account:</p>
           <ul style="font-size:12px;color:#374151;padding-left:18px;margin:0">${pageList}</ul>
-          <a href="/messenger-outreach" style="display:inline-block;margin-top:24px;padding:10px 20px;background:#EE8172;color:#fff;border-radius:8px;text-decoration:none;font-size:12px;font-weight:700">Go to Messenger Outreach →</a>
+          <a href="/messenger-outreach" style="display:inline-block;margin-top:24px;padding:10px 20px;background:var(--accent);color:#fff;border-radius:8px;text-decoration:none;font-size:12px;font-weight:700">Go to Messenger Outreach →</a>
         </div>
       </body></html>`,
       { headers: { "Content-Type": "text/html" } }
@@ -96,7 +96,7 @@ export async function GET(req: NextRequest) {
   } catch (err) {
     return new Response(
       `<html><body style="font-family:sans-serif;padding:40px;background:#f5f0ea">
-        <h2 style="color:#EE8172">Token exchange failed</h2>
+        <h2 style="color:var(--accent)">Token exchange failed</h2>
         <pre style="background:#fff;padding:16px;border-radius:8px;font-size:12px">${String(err)}</pre>
         <a href="/settings">← Back to Settings</a>
       </body></html>`,

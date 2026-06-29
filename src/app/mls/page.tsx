@@ -62,7 +62,7 @@ export default function MLSPage() {
           className="hero-blob-wrap"
           style={{
             background: "var(--aire-coral-soft)",
-            border: "1px solid rgba(238,129,114,0.25)",
+            border: "1px solid var(--accent-soft)",
             borderRadius: "20px",
             padding: "72px 56px",
             textAlign: "center",

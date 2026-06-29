@@ -207,7 +207,7 @@ export default function SocialPanel({ lead, onUpdate }: { lead: Lead; onUpdate: 
                           fontWeight: 700,
                           padding: "4px 10px",
                           letterSpacing: "0.06em",
-                          border: "1px solid rgba(238,129,114,0.25)",
+                          border: "1px solid var(--accent-soft)",
                           cursor: "pointer",
                           borderRadius: "999px",
                         }}
@@ -349,7 +349,7 @@ function GhostPillLink({ href, label }: { href: string; label: string }) {
       rel="noopener"
       onMouseEnter={(e) => {
         e.currentTarget.style.color = "var(--aire-coral-deep)";
-        e.currentTarget.style.borderColor = "rgba(238,129,114,0.35)";
+        e.currentTarget.style.borderColor = "var(--accent-soft)";
         e.currentTarget.style.background = "var(--aire-coral-soft)";
       }}
       onMouseLeave={(e) => {

@@ -184,7 +184,7 @@ export default function JarvisBar() {
           width: 44,
           height: 44,
           borderRadius: "50%",
-          background: status === "thinking" ? "#EE8172" : "var(--aire-ink, #09090B)",
+          background: status === "thinking" ? "var(--accent)" : "var(--aire-ink, #09090B)",
           border: "none",
           cursor: "pointer",
           display: "flex",
@@ -193,7 +193,7 @@ export default function JarvisBar() {
           fontSize: 16,
           color: "#fff",
           boxShadow: status === "thinking"
-            ? "0 0 0 4px rgba(238,129,114,0.3), 0 4px 16px rgba(0,0,0,0.2)"
+            ? "0 0 0 4px var(--accent-soft), 0 4px 16px rgba(0,0,0,0.2)"
             : fabPulse
             ? "0 0 0 6px rgba(9,9,11,0.12), 0 4px 16px rgba(0,0,0,0.18)"
             : "0 4px 16px rgba(0,0,0,0.18)",
@@ -244,7 +244,7 @@ export default function JarvisBar() {
               width: 6,
               height: 6,
               borderRadius: "50%",
-              background: status === "thinking" ? "#9CA3AF" : "#EE8172",
+              background: status === "thinking" ? "#9CA3AF" : "var(--accent)",
               marginTop: 5,
               flexShrink: 0,
               animation: status === "thinking" ? "pulse-dot 1.4s ease-in-out infinite" : "none",
@@ -276,7 +276,7 @@ export default function JarvisBar() {
               fontSize: 11,
               fontWeight: 700,
               letterSpacing: "0.08em",
-              color: status === "thinking" ? "#EE8172" : "#9CA3AF",
+              color: status === "thinking" ? "var(--accent)" : "#9CA3AF",
               fontFamily: "var(--font-sans-app, system-ui)",
               transition: "color 0.2s",
               userSelect: "none",
@@ -313,7 +313,7 @@ export default function JarvisBar() {
             fontSize: 14,
             color: "#111827",
             fontFamily: "var(--font-sans-app, system-ui)",
-            caretColor: "#EE8172",
+            caretColor: "var(--accent)",
           }}
         />
 
@@ -324,7 +324,7 @@ export default function JarvisBar() {
             width: 28,
             height: 28,
             borderRadius: "50%",
-            background: input.trim() && status !== "thinking" ? "#EE8172" : "rgba(0,0,0,0.06)",
+            background: input.trim() && status !== "thinking" ? "var(--accent)" : "rgba(0,0,0,0.06)",
             border: "none",
             cursor: input.trim() && status !== "thinking" ? "pointer" : "default",
             display: "flex",

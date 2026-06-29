@@ -167,7 +167,7 @@ export default function SocialMatchPage() {
             padding: "16px 20px",
             marginBottom: "20px",
             background: "var(--aire-coral-soft)",
-            border: "1px solid rgba(238,129,114,0.4)",
+            border: "1px solid var(--accent-soft)",
             borderRadius: "12px",
             color: "var(--aire-coral-deep)",
             fontSize: "13px",
