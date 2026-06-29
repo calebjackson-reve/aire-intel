@@ -185,9 +185,10 @@ export interface RentcastListing {
 
 export async function fetchSaleListings(
   zipCode: string,
-  limit = 50
+  limit = 50,
+  enrich = false
 ): Promise<RentcastListing[]> {
-  return withRetry(async () => {
+  const listings = await withRetry(async () => {
     const params = new URLSearchParams({ zipCode, status: "Active", limit: String(limit) });
     const res = await fetch(`${BASE_URL}/listings/sale?${params}`, { headers: headers() });
     if (!res.ok) throw new Error(`Rentcast listings failed: ${res.status}`);
@@ -213,6 +214,44 @@ export async function fetchSaleListings(
       status: (l.status ?? "Active") as string,
     }));
   }, { maxAttempts: 2, source: "rentcast/fetchSaleListings" });
+
+  return enrich ? enrichListingsWithDetails(listings) : listings;
+}
+
+// Enrich listings missing beds/baths/sqft via the /properties detail endpoint.
+// Fires parallel requests (capped at maxEnrich) and merges results back; failures
+// are silently skipped so a bad address never kills the whole list.
+export async function enrichListingsWithDetails(
+  listings: RentcastListing[],
+  maxEnrich = 20
+): Promise<RentcastListing[]> {
+  const toEnrich = listings
+    .filter(l => (l.bedrooms === null || l.bathrooms === null || l.squareFootage === null) && l.formattedAddress)
+    .slice(0, maxEnrich);
+
+  if (toEnrich.length === 0) return listings;
+
+  const results = await Promise.allSettled(
+    toEnrich.map(async (listing) => {
+      const params = new URLSearchParams({ address: listing.formattedAddress });
+      const res = await fetch(`${BASE_URL}/properties?${params}`, { headers: headers() });
+      if (!res.ok) return listing;
+      const d = await res.json();
+      return {
+        ...listing,
+        bedrooms: listing.bedrooms ?? (d.bedrooms ?? null) as number | null,
+        bathrooms: listing.bathrooms ?? (d.bathrooms ?? null) as number | null,
+        squareFootage: listing.squareFootage ?? (d.squareFootage ?? null) as number | null,
+      };
+    })
+  );
+
+  const enrichedMap = new Map<string, RentcastListing>();
+  results.forEach((r, i) => {
+    if (r.status === "fulfilled") enrichedMap.set(toEnrich[i].id, r.value);
+  });
+
+  return listings.map(l => enrichedMap.get(l.id) ?? l);
 }
 
 // Convenience: full CMA summary for an address
