@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import Link from "next/link";
 
 interface BriefItem {
   actionQueueId?: string;
@@ -141,6 +142,71 @@ function BriefItemCard({
   );
 }
 
+// ─── Rich market stats card ───────────────────────────────────────────────────
+function MarketStatsCard({ item }: { item: BriefItem }) {
+  const m = item.metadata ?? {};
+  const medianPrice = m.medianPrice as number | null;
+  const dom = m.daysOnMarket as number | null;
+  const totalActive = m.totalActive as number | null;
+  const featured = (m.featuredListings ?? []) as Array<{ photos: string[]; address: string; city: string; price: number | null }>;
+
+  function fmt(n: number) {
+    return n >= 1_000_000 ? `$${(n / 1_000_000).toFixed(1)}M` : `$${Math.round(n / 1000)}k`;
+  }
+
+  return (
+    <div className="glass-card" style={{ padding: "18px 20px", marginBottom: "8px", borderRadius: "12px" }}>
+      {/* Stats row */}
+      <div style={{ display: "flex", gap: 24, flexWrap: "wrap", marginBottom: featured.length ? 16 : 0 }}>
+        <div>
+          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", color: "#666", textTransform: "uppercase", marginBottom: 4 }}>Median Price</div>
+          <div style={{ fontSize: 28, fontWeight: 700, color: "#fff", fontFamily: "var(--font-display-app)", letterSpacing: "-0.02em" }}>
+            {medianPrice ? fmt(medianPrice) : "—"}
+          </div>
+        </div>
+        <div>
+          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", color: "#666", textTransform: "uppercase", marginBottom: 4 }}>Avg DOM</div>
+          <div style={{ fontSize: 28, fontWeight: 700, color: "#fff", fontFamily: "var(--font-display-app)", letterSpacing: "-0.02em" }}>
+            {dom != null ? `${Math.round(dom)}d` : "—"}
+          </div>
+        </div>
+        <div>
+          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", color: "#666", textTransform: "uppercase", marginBottom: 4 }}>Active Listings</div>
+          <div style={{ fontSize: 28, fontWeight: 700, color: "#fff", fontFamily: "var(--font-display-app)", letterSpacing: "-0.02em" }}>
+            {totalActive ?? "—"}
+          </div>
+        </div>
+        <div style={{ marginLeft: "auto", alignSelf: "flex-end" }}>
+          <Link href="/market" style={{ fontSize: 12, color: "#EE8172", textDecoration: "none", fontWeight: 600 }}>
+            View Market →
+          </Link>
+        </div>
+      </div>
+
+      {/* AI summary */}
+      {item.subtitle && (
+        <p style={{ fontSize: 12, color: "#888", margin: "0 0 14px", lineHeight: 1.5 }}>{item.subtitle}</p>
+      )}
+
+      {/* Featured listings with photos */}
+      {featured.length > 0 && (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: 8 }}>
+          {featured.map((l, i) => (
+            <div key={i} style={{ borderRadius: 8, overflow: "hidden", border: "1px solid rgba(255,255,255,0.08)" }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={l.photos[0]} alt={l.address} style={{ width: "100%", height: 80, objectFit: "cover", display: "block" }} />
+              <div style={{ padding: "6px 8px" }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: "#fff" }}>{l.price ? fmt(l.price) : "—"}</div>
+                <div style={{ fontSize: 10, color: "#888", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{l.address}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Section({
   emoji,
   title,
@@ -198,15 +264,19 @@ function Section({
 
       {!collapsed && (
         <div>
-          {items.map((item, i) => (
-            <BriefItemCard
-              key={item.actionQueueId ?? `${title}-${i}`}
-              item={item}
-              status={status}
-              onApprove={onApprove}
-              onSkip={onSkip}
-            />
-          ))}
+          {items.map((item, i) =>
+            item.type === "market_stats" ? (
+              <MarketStatsCard key={`market-${i}`} item={item} />
+            ) : (
+              <BriefItemCard
+                key={item.actionQueueId ?? `${title}-${i}`}
+                item={item}
+                status={status}
+                onApprove={onApprove}
+                onSkip={onSkip}
+              />
+            )
+          )}
         </div>
       )}
     </div>
@@ -216,16 +286,25 @@ function Section({
 export default function BriefPage() {
   const [brief, setBrief] = useState<DailyBrief | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [actionStatus, setActionStatus] = useState<ActionStatus>({});
 
   useEffect(() => {
     fetch("/api/brief")
       .then((r) => r.json())
-      .then((d) => {
-        setBrief(d.brief);
-        setLoading(false);
-      })
+      .then((d) => { setBrief(d.brief); setLoading(false); })
       .catch(() => setLoading(false));
+  }, []);
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      const d = await fetch("/api/brief", { method: "POST" }).then((r) => r.json());
+      setBrief(d.brief);
+      setActionStatus({});
+    } finally {
+      setRefreshing(false);
+    }
   }, []);
 
   const handleApprove = useCallback(async (actionQueueId: string) => {
@@ -345,6 +424,13 @@ export default function BriefPage() {
           {pendingActions > 0 && (
             <span style={{ color: "#EE8172" }}>{pendingActions} action{pendingActions > 1 ? "s" : ""} pending</span>
           )}
+          <button
+            onClick={handleRefresh}
+            disabled={refreshing}
+            style={{ background: "none", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 6, padding: "2px 10px", fontSize: 11, color: refreshing ? "#555" : "#888", cursor: refreshing ? "wait" : "pointer", fontFamily: "inherit" }}
+          >
+            {refreshing ? "Refreshing…" : "↻ Refresh"}
+          </button>
         </div>
       </div>
 

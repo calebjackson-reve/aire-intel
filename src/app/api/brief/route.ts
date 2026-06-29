@@ -21,3 +21,12 @@ export async function GET() {
 
   return Response.json({ brief: record, date: today });
 }
+
+// POST /api/brief — force re-assembly (deletes today's record, rebuilds fresh)
+export async function POST() {
+  const today = getTodayCT();
+  await prisma.dailyBrief.deleteMany({ where: { date: today } });
+  const assembled = await assembleBrief();
+  const record = await prisma.dailyBrief.findUnique({ where: { date: assembled.date } });
+  return Response.json({ brief: record, date: today });
+}

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Sunrise, GitBranch, Users, PenTool, Settings, Map, Pin, PinOff } from "lucide-react";
+import { Sunrise, GitBranch, Users, PenTool, Settings, Map, Newspaper, CheckSquare, Pin, PinOff } from "lucide-react";
 
 interface NavItem {
   href: string;
@@ -15,8 +15,9 @@ interface NavItem {
 const ICON = 17;
 
 const PRIMARY: NavItem[] = [
-  { href: "/today",          label: "Today",    icon: <Sunrise size={ICON} />,   badgeKey: "queue" },
-  { href: "/pipeline",       label: "Pipeline", icon: <GitBranch size={ICON} />, badgeKey: "overdue" },
+  { href: "/brief",          label: "Brief",    icon: <Newspaper size={ICON} />,    badgeKey: "queue" },
+  { href: "/today",          label: "Today",    icon: <CheckSquare size={ICON} /> },
+  { href: "/pipeline",       label: "Pipeline", icon: <GitBranch size={ICON} />,    badgeKey: "overdue" },
   { href: "/contacts",       label: "Contacts", icon: <Users size={ICON} /> },
   { href: "/market",         label: "Market",   icon: <Map size={ICON} /> },
   { href: "/create-post",    label: "Content",  icon: <PenTool size={ICON} /> },
@@ -53,7 +54,7 @@ export default function Sidebar() {
   }, []);
 
   function isActive(href: string) {
-    if (href === "/today") return pathname === "/today" || pathname === "/";
+    if (href === "/brief") return pathname === "/brief" || pathname === "/";
     return pathname?.startsWith(href);
   }
 

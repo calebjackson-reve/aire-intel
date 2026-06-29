@@ -324,12 +324,19 @@ export async function assembleBrief(agentRunId?: string): Promise<AssembledBrief
   // Market stats snapshot: marketResult
   if (marketResult.status === "fulfilled" && marketResult.value !== null) {
     const m = marketResult.value;
+    const medK = Math.round((m.medianPrice ?? 0) / 1000);
     marketMovement.push({
       type: "market_stats",
-      title: `BR Market: Median $${Math.round((m.medianPrice ?? 0) / 1000)}k`,
+      title: `BR Market: Median $${medK}k`,
       subtitle: m.summary,
       priority: 5,
-      metadata: { medianPrice: m.medianPrice, daysOnMarket: m.daysOnMarket, zip: "70808" },
+      metadata: {
+        medianPrice: m.medianPrice,
+        daysOnMarket: m.daysOnMarket,
+        totalActive: m.totalActive,
+        zip: "70808",
+        featuredListings: m.featuredListings ?? [],
+      },
     });
   }
 

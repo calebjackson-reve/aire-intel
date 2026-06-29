@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 import { NextRequest } from "next/server";
 import { fetchActiveListings } from "@/lib/paragon";
 import { fetchViralListings, type ZillowProperty } from "@/lib/zillow";
+import { fetchSaleListings } from "@/lib/rentcast";
 import { logError } from "@/lib/error-memory";
 
 // Shape that the market page expects
@@ -77,6 +78,37 @@ export async function GET(req: NextRequest) {
         listings = filtered.slice(0, limit);
       } catch (zErr) {
         logError("api_failure", "api/market/listings/zillow-fallback", zErr as Error);
+      }
+    }
+
+    // Last fallback: Rentcast /v1/listings/sale (works at basic tier, no photos)
+    if (listings.length === 0 && process.env.RENTCAST_API_KEY) {
+      try {
+        const zip = "70808"; // Baton Rouge default
+        const rentcastRaw = await fetchSaleListings(zip, limit);
+        let filtered = rentcastRaw.map(l => ({
+          id: `rentcast-${l.id}`,
+          address: l.addressLine1 || l.formattedAddress,
+          city: l.city,
+          state: l.state,
+          zip: l.zipCode,
+          price: l.price,
+          beds: l.bedrooms,
+          baths: l.bathrooms,
+          sqft: l.squareFootage,
+          status: l.status,
+          daysOnMarket: l.daysOnMarket,
+          photos: [] as string[],
+          mlsNumber: l.id,
+          propertyType: l.propertyType,
+          listingAgent: l.listingAgent,
+          source: "paragon" as const, // label as paragon so UI shows same card style
+        }));
+        if (minPrice) filtered = filtered.filter(l => l.price == null || l.price >= minPrice);
+        if (maxPrice) filtered = filtered.filter(l => l.price == null || l.price <= maxPrice);
+        listings = filtered.slice(0, limit);
+      } catch (rcErr) {
+        logError("api_failure", "api/market/listings/rentcast-fallback", rcErr as Error);
       }
     }
 

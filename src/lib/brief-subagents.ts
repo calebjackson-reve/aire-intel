@@ -66,24 +66,46 @@ export async function fetchRateSubagent(): Promise<RateSubagentResult | null> {
 export interface MarketSubagentResult {
   medianPrice: number | null;
   daysOnMarket: number | null;
+  totalActive: number;
   summary: string;
+  featuredListings: Array<{ photos: string[]; address: string; city: string; zip: string; price: number | null }>;
 }
 
 export async function fetchMarketSubagent(zipCode: string): Promise<MarketSubagentResult | null> {
   try {
-    const stats = await getMarketStats(zipCode);
+    // Use our own /api/market/listings endpoint (already works via Rentcast/Zillow)
+    // rather than the Rentcast /v1/markets endpoint which requires a higher-tier plan
+    const base = process.env.NEXTAUTH_URL ?? "http://localhost:3000";
+    const res = await fetch(`${base}/api/market/listings?limit=50`, {
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!res.ok) throw new Error(`listings API ${res.status}`);
+    const { stats, listings } = await res.json() as {
+      stats: { medianPrice: number | null; avgDom: number | null; totalActive: number };
+      listings: Array<{ price: number | null; daysOnMarket: number | null; photos: string[]; address: string; city: string; zip: string }>;
+    };
 
-    const summaryPrompt = `One sentence (under 25 words) for a Baton Rouge realtor's morning brief. Market stats for ${zipCode}: median price $${Math.round((stats.medianPrice ?? 0) / 1000)}k, avg DOM ${stats.averageDaysOnMarket ?? "unknown"} days, ${stats.totalListings ?? "unknown"} active listings.`;
+    const medianPrice = stats?.medianPrice ?? null;
+    const avgDom = stats?.avgDom ?? null;
+    const totalActive = stats?.totalActive ?? 0;
+
+    // Pick up to 4 listings with photos for the brief card
+    const featured = (listings ?? [])
+      .filter(l => l.photos?.length > 0)
+      .slice(0, 4);
+
+    const summaryPrompt = `One sentence (under 25 words) for a Baton Rouge realtor's morning brief. Active listings in ${zipCode}: median price $${Math.round((medianPrice ?? 0) / 1000)}k, avg DOM ${avgDom ?? "unknown"} days, ${totalActive} active listings.`;
 
     const summary = await oneSentence(summaryPrompt).catch(
-      () =>
-        `BR ${zipCode}: median $${Math.round((stats.medianPrice ?? 0) / 1000)}k, ${stats.averageDaysOnMarket ?? "—"}d DOM.`
+      () => `BR ${zipCode}: median $${Math.round((medianPrice ?? 0) / 1000)}k, ${avgDom ?? "—"}d DOM, ${totalActive} active.`
     );
 
     return {
-      medianPrice: stats.medianPrice,
-      daysOnMarket: stats.averageDaysOnMarket,
+      medianPrice,
+      daysOnMarket: avgDom,
       summary,
+      totalActive,
+      featuredListings: featured,
     };
   } catch {
     return null;
