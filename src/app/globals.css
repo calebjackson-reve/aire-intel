@@ -893,6 +893,19 @@ body > * { position: relative; z-index: 1; }
 
 /* ─── Layout ─────────────────────────────────────────────────────────────────── */
 .aire-content { margin-left: var(--sidebar-collapsed); transition: margin-left 0.22s var(--ease-out-expo); }
+/* Clear JarvisBar (fixed ~56px) + safe zone so bottom buttons are never blocked */
+.aire-content > main { padding-bottom: 80px; }
+
+/* ─── Z-index scale (must be kept consistent) ────────────────────────────────
+   10  sticky page sub-headers
+   20  Topbar (sticky top)
+   50  Sidebar (fixed left)
+   100 JarvisBar expanded panel
+   101 JarvisBar FAB button
+   200 Topbar dropdowns / menus
+   300 Tooltips
+   9000 CommandPalette overlay (intentional modal)
+─────────────────────────────────────────────────────────────────────────────── */
 
 @media (max-width: 1280px) { .split-left { width: 300px; min-width: 260px; } }
 @media (max-width: 1024px) {
@@ -947,3 +960,98 @@ body > * { position: relative; z-index: 1; }
 .blob-coral { background: radial-gradient(circle, rgba(251,191,36,0.7) 0%, transparent 70%); top: -40px; right: 15%; animation-delay: -2s; }
 .blob-cream { background: radial-gradient(circle, rgba(245,158,11,0.5) 0%, transparent 70%); bottom: -60px; right: -20px; width: 220px; height: 220px; animation-delay: -8s; }
 .blob-dark  { background: radial-gradient(circle, rgba(6,95,70,0.3) 0%, transparent 70%); top: 30%; left: -30px; width: 180px; height: 180px; animation-delay: -4s; }
+
+/* ─── Sign-in page ───────────────────────────────────────────────────────────── */
+.sign-in-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(ellipse at 20% 20%, rgba(245,158,11,0.18) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 80%, rgba(6,95,70,0.12) 0%, transparent 50%),
+    var(--aire-bg);
+  flex-direction: column;
+  gap: 32px;
+  padding: 40px 20px;
+}
+
+.sign-in-shell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 28px;
+  width: 100%;
+  max-width: 420px;
+}
+
+.sign-in-brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.sign-in-mark {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: var(--aire-green);
+  color: #fff;
+  font-family: var(--font-display-app);
+  font-size: 22px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-float);
+}
+
+.sign-in-name {
+  font-family: var(--font-display-app);
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--aire-ink);
+  letter-spacing: -0.01em;
+}
+
+.sign-in-sub {
+  font-size: 11px;
+  color: var(--aire-text-2);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-family: var(--font-sans-app);
+}
+
+/* Clerk component overrides — blend into AIRÉ design */
+.sign-in-clerk-card {
+  background: rgba(255,255,255,0.95) !important;
+  border: 1px solid var(--aire-border) !important;
+  border-radius: 20px !important;
+  box-shadow: var(--shadow-float) !important;
+  font-family: var(--font-sans-app) !important;
+  padding: 32px !important;
+}
+
+.sign-in-clerk-btn {
+  background: var(--aire-green) !important;
+  border-radius: 100px !important;
+  font-family: var(--font-sans-app) !important;
+  font-weight: 600 !important;
+  box-shadow: var(--shadow-glow-green) !important;
+}
+
+.sign-in-clerk-btn:hover {
+  background: var(--aire-green-mid) !important;
+}
+
+.sign-in-clerk-social {
+  border: 1px solid var(--aire-border) !important;
+  border-radius: 100px !important;
+  font-family: var(--font-sans-app) !important;
+  background: var(--aire-card-warm) !important;
+}
+
+.sign-in-clerk-link {
+  color: var(--aire-green) !important;
+  font-family: var(--font-sans-app) !important;
+}

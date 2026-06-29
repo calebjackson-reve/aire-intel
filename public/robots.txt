@@ -1,0 +1,7 @@
+User-agent: *
+Disallow: /api/
+Disallow: /sign-in
+Disallow: /sign-up
+Disallow: /system
+
+Sitemap: https://www.aireintel.org/sitemap.xml
