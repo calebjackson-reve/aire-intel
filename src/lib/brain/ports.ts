@@ -9,14 +9,26 @@
 
 import type { ConfidenceBand, Provenance } from "./types";
 
+// One belief as a surface sees it. The PORT (not the engine) chose the band from
+// the belief's confidence scalar; `summary` is the engine's claim verbatim;
+// `counterConsiderations` are the alternatives it weighed (the "Why?" panel);
+// provenance is the observations it was rebuilt from — one tap away.
+export interface SurfacedBelief {
+  band: ConfidenceBand; // presentation, decided here — never by the engine
+  summary: string; // the belief's claim
+  counterConsiderations: string[];
+  provenance: Provenance;
+}
+
 // What a surface sees about an entity's relationship state. Derived, never raw.
-// Confidence is a BAND, never a number (P10): the UI renders register/behavior,
-// not a decimal. Provenance is one tap away.
+// Confidence is a BAND, never a number (P10). `engineVersion` lets the UI attribute
+// the reasoning (and lets us compare engine generations later).
 export interface RelationshipIntelligence {
   entityId: string;
   label: string;
-  health: { band: ConfidenceBand; summary: string; provenance: Provenance } | null;
-  riskOfDrift: { band: ConfidenceBand; summary: string; provenance: Provenance } | null;
+  engineVersion: string | null;
+  health: SurfacedBelief | null;
+  riskOfDrift: SurfacedBelief | null;
 }
 
 export interface AtRiskQuery {

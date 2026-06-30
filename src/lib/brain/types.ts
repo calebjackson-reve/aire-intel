@@ -67,15 +67,28 @@ export interface ObservationInput {
   facts?: Record<string, unknown>;
 }
 
-// A reproducible belief — Book −1's first guardrail. Evidence is held as
-// REFERENCES into immutable memory so the Brain can replay it, never assert from
-// authority. Persisted as a derived Node(kind="Belief"); fields live in facts.
+// The belief engine's identity. EVERY belief stamps the version that produced it,
+// so a future engine can replay the same observations and the two generations can
+// be compared (v1 vs v2 hit-rates). Bump on any change to the reasoning.
+export const BELIEF_ENGINE_VERSION = "belief-engine-v1" as const;
+
+// Belief categories the engine can assert. Open set; the consumer port maps each
+// kind to a UI concept (badge/label) — the engine never names a colour or label.
+export type BeliefKind = "relationship_health" | "relationship_drift_risk";
+
+// A reproducible belief — Book −1's first guardrail. The engine produces THESE,
+// not UI labels. Evidence is held as REFERENCES into immutable memory so the Brain
+// can replay it, never assert from authority. Confidence is an internal scalar; the
+// CONSUMER PORT decides how it presents (band/badge). Persisted in Node.facts.model.
 export interface Belief {
-  claim: string;
+  kind: BeliefKind;
+  claim: string;                 // natural-language assertion — the reasoning, not the label
   confidence: number;            // internal scalar, NEVER shown to Caleb as a number
   evidenceRefs: string[];        // Observation ids supporting it
   contradictionRefs: string[];   // Observation ids cutting against it
+  counterConsiderations: string[]; // derived caveats / alternatives weighed ("historically slow to reply")
   lastEvaluatedAt: Date;
+  engineVersion: string;         // which engine produced this belief (see BELIEF_ENGINE_VERSION)
   revisionHistory: Array<{ claim: string; confidence: number; changedAt: Date; reason: string }>;
 }
 

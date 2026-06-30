@@ -94,10 +94,12 @@ async function main() {
 
   console.log("\n━━━ 5. PRESENT (consumer port — the only UI read path) ━━━");
   const one = await relationshipIntelligence.forPerson(entityId);
+  console.log(`   engine: ${one?.engineVersion}   (band chosen by the PORT, not the engine)`);
   console.log("   forPerson():");
   console.log(`     health      [${one?.health?.band}]  ${one?.health?.summary}`);
   console.log(`     riskOfDrift [${one?.riskOfDrift?.band}]  ${one?.riskOfDrift?.summary}`);
-  console.log(`     provenance  ${one?.riskOfDrift?.provenance.observationIds.length} obs from [${one?.riskOfDrift?.provenance.sourceLabels.join(", ")}]`);
+  for (const c of one?.riskOfDrift?.counterConsiderations ?? []) console.log(`       ↳ alternative considered: ${c}`);
+  console.log(`     provenance  ${one?.riskOfDrift?.provenance.observationIds.length} observation(s)`);
 
   const atRisk = await relationshipIntelligence.atRiskOfDrift({ minBand: "MED", limit: 5 });
   console.log(`\n   atRiskOfDrift(): ${atRisk.length} entit${atRisk.length === 1 ? "y" : "ies"} the Brain flags`);
