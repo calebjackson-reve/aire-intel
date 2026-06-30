@@ -30,12 +30,12 @@ const DRIFT = {
   healthWarmWithinDays: 21,
 } as const;
 
-function isInbound(o: { eventType: string; facts: unknown }): boolean {
+export function isInbound(o: { eventType: string; facts: unknown }): boolean {
   const dir = (o.facts as { direction?: string } | null)?.direction;
   if (dir) return dir === "inbound";
   return /received|inbound|reply/i.test(o.eventType);
 }
-function isOutbound(o: { eventType: string; facts: unknown }): boolean {
+export function isOutbound(o: { eventType: string; facts: unknown }): boolean {
   const dir = (o.facts as { direction?: string } | null)?.direction;
   if (dir) return dir === "outbound";
   return /sent|outbound|call_made|emailed/i.test(o.eventType);
@@ -62,8 +62,12 @@ export async function computeV0(entityId: string, now: number = Date.now()): Pro
   });
   if (!node) return null;
 
+  // Vendor + self exclusion: the Brain never reasons FROM its own predictions/
+  // grades (sourceKind "brain"), only about real-world events. `recordedAt <= now`
+  // makes replay honest — recomputing "as of" a past date sees only what was known
+  // then. "Replay, never migrate."
   const obs = await prisma.observation.findMany({
-    where: { nodeId: entityId },
+    where: { nodeId: entityId, NOT: { sourceKind: "brain" }, recordedAt: { lte: new Date(now) } },
     orderBy: { recordedAt: "asc" },
     select: { id: true, eventType: true, text: true, facts: true, sourceKind: true, recordedAt: true },
   });

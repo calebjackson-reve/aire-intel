@@ -47,6 +47,9 @@ interface BrainResp {
   atRisk: BrainRisk[];
   computed: boolean;
 }
+interface ScoreResp {
+  scores: Array<{ engineVersion: string; graded: number; confirmed: number; incorrect: number; openPredictions: number; hitRate: number | null }>;
+}
 
 // Greeting computed locally so the identity ("Good morning, Caleb.") paints
 // instantly — before the AI mission resolves.
@@ -71,6 +74,7 @@ export default function MissionControl() {
   const [mission, setMission] = useState<MissionResp | null>(null);
   const [signals, setSignals] = useState<SignalsResp | null>(null);
   const [brain, setBrain] = useState<BrainResp | null>(null);
+  const [score, setScore] = useState<ScoreResp | null>(null);
   const [dealOpen, setDealOpen] = useState(false);
   const greeting = mission?.greeting || localGreeting();
 
@@ -79,7 +83,18 @@ export default function MissionControl() {
     fetch("/api/brief-signals").then((r) => r.json()).then(setSignals).catch(() => setSignals(null));
     // The Brain's derived read — comes ONLY through the consumer port.
     fetch("/api/brain/intelligence").then((r) => r.json()).then(setBrain).catch(() => setBrain(null));
+    fetch("/api/brain/scorecard").then((r) => r.json()).then(setScore).catch(() => setScore(null));
   }, []);
+
+  // The Brain's self-grade — honest at low n: show the count it's graded, and only
+  // a hit-rate percentage once enough predictions have been decided to mean something.
+  const v1 = score?.scores?.find((s) => s.engineVersion === "belief-engine-v1");
+  const decided = v1 ? v1.confirmed + v1.incorrect : 0;
+  const selfGradeLine = !v1 || v1.graded === 0
+    ? ""
+    : decided >= 5
+      ? `${v1.engineVersion} · ${Math.round((v1.hitRate ?? 0) * 100)}% of ${decided} predictions held up`
+      : `${v1.engineVersion} · ${v1.graded} prediction${v1.graded === 1 ? "" : "s"} graded so far`;
 
   // Re-enable the global "Log Deal" quick action / "D" shortcut on Home
   // (TopNav + Topbar dispatch this event; nothing was listening before).
@@ -140,6 +155,7 @@ export default function MissionControl() {
                   </li>
                 ))}
               </ul>
+              {selfGradeLine && <span className="mc-brain-grade">{selfGradeLine}</span>}
             </div>
           )}
 
@@ -241,6 +257,11 @@ export default function MissionControl() {
         .mc-brain-item.band-high::before { background: var(--accent); }
         .mc-brain-summary { font-family: var(--font-ui); font-size: var(--type-ui-size); line-height: 1.5; color: var(--ink-2); }
         .mc-brain-prov { font-family: var(--font-ui); font-size: var(--type-caption-size); color: var(--ink-faint); }
+        .mc-brain-grade {
+          display: block; margin-top: 14px;
+          font-family: var(--font-ui); font-size: var(--type-caption-size);
+          color: var(--ink-faint); letter-spacing: 0.01em;
+        }
 
         .mc-moves { margin-top: 40px; }
         .mc-moves-title {
