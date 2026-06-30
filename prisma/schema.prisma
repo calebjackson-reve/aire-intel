@@ -943,7 +943,12 @@ model Node {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
+  // Derived-model state for this entity: beliefs, computed health/risk, each with
+  // provenance. DISPOSABLE — rebuildable by replaying observations (replay, never migrate).
+  facts       Json?
+
   observations Observation[]
+  identities   EntityIdentity[]
 
   @@index([kind, workspaceId])
   @@index([refTable, refId])
@@ -980,4 +985,21 @@ model DomainEvent {
 
   @@index([aggregate, aggregateId, publishedAt])
   @@index([workspaceId, eventType, createdAt])
+}
+
+// Vendor-blind identity index — Increment 1, layer 3.
+// Maps any identity scheme (leadId | phone | email | handle | loftyId) to exactly
+// one entity Node, with no vendor branch. Built now so a future channel (an
+// Instagram handle, a phone number) resolves to the same entity with no core
+// change — each new channel is then just a new adapter that emits these keys.
+model EntityIdentity {
+  id        String   @id @default(cuid())
+  nodeId    String
+  node      Node     @relation(fields: [nodeId], references: [id], onDelete: Cascade)
+  scheme    String   // leadId | phone | email | handle | loftyId
+  value     String   // for handle: "platform:handle" e.g. "instagram:sarah_b"
+  createdAt DateTime @default(now())
+
+  @@unique([scheme, value]) // a scheme+value maps to exactly one entity
+  @@index([nodeId])
 }
