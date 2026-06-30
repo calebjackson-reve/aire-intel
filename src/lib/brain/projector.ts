@@ -13,6 +13,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { prisma } from "@/lib/prisma";
+import { computeV0 } from "./beliefs";
 import type { IdentityKey, ObservationInput } from "./types";
 
 const DEFAULT_WORKSPACE = "default";
@@ -112,12 +113,11 @@ export async function ingest(input: ObservationInput): Promise<{ observationId: 
  * Layer 4 (belief derivation + computeV0 health/risk) lands here next; for now
  * this is the seam where the model layer is rebuilt — disposable by design.
  */
-export async function recompute(_entityId: string): Promise<void> {
-  // Increment 1, layer 4: derive Relationship Health + Risk-of-Drift beliefs
-  // from this entity's observations, with confidence + provenance. Intentionally
-  // a no-op until the belief engine lands — proving the projector is callable and
-  // that recompute is a pure function of remembered history.
-  return;
+export async function recompute(entityId: string): Promise<void> {
+  // Layer 4: derive Relationship Health + Risk-of-Drift beliefs from this
+  // entity's immutable observations, with confidence + provenance, into the
+  // disposable Node.facts.model. A pure function of remembered history.
+  await computeV0(entityId);
 }
 
 // Identity hygiene: trim, lowercase emails, and namespace handles, so the same

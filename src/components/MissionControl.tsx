@@ -38,6 +38,15 @@ interface SignalsResp {
   rate: { message: string; direction: "up" | "down" | "flat"; delta: number } | null;
   owe: { count: number; names: string[] } | null;
 }
+interface BrainRisk {
+  entityId: string;
+  label: string;
+  risk: { band: "HIGH" | "MED" | "LOW"; summary: string; evidenceCount: number } | null;
+}
+interface BrainResp {
+  atRisk: BrainRisk[];
+  computed: boolean;
+}
 
 // Greeting computed locally so the identity ("Good morning, Caleb.") paints
 // instantly — before the AI mission resolves.
@@ -61,12 +70,15 @@ export default function MissionControl() {
   const router = useRouter();
   const [mission, setMission] = useState<MissionResp | null>(null);
   const [signals, setSignals] = useState<SignalsResp | null>(null);
+  const [brain, setBrain] = useState<BrainResp | null>(null);
   const [dealOpen, setDealOpen] = useState(false);
   const greeting = mission?.greeting || localGreeting();
 
   useEffect(() => {
     fetch("/api/mission").then((r) => r.json()).then(setMission).catch(() => setMission(null));
     fetch("/api/brief-signals").then((r) => r.json()).then(setSignals).catch(() => setSignals(null));
+    // The Brain's derived read — comes ONLY through the consumer port.
+    fetch("/api/brain/intelligence").then((r) => r.json()).then(setBrain).catch(() => setBrain(null));
   }, []);
 
   // Re-enable the global "Log Deal" quick action / "D" shortcut on Home
@@ -109,6 +121,27 @@ export default function MissionControl() {
               </p>
             )}
           </div>
+
+          {/* The Brain noticed — derived intelligence, read only through the consumer port.
+              Each line is a reproducible belief; provenance ("from N remembered signals")
+              keeps it honest. Confidence is a register, never a number (P10). */}
+          {brain && brain.atRisk.length > 0 && (
+            <div className="mc-brain">
+              <span className="mc-brain-eyebrow">The Brain noticed</span>
+              <ul className="mc-brain-list">
+                {brain.atRisk.slice(0, 2).map((r) => (
+                  <li key={r.entityId} className={`mc-brain-item band-${r.risk?.band?.toLowerCase()}`}>
+                    <span className="mc-brain-summary">{r.risk?.summary}</span>
+                    {r.risk && (
+                      <span className="mc-brain-prov">
+                        from {r.risk.evidenceCount} remembered signal{r.risk.evidenceCount === 1 ? "" : "s"}
+                      </span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           {/* Three things unlock today */}
           {loading ? (
@@ -188,6 +221,26 @@ export default function MissionControl() {
           width: 5px; height: 5px; border-radius: 50%;
           background: var(--ink-faint);
         }
+
+        .mc-brain { margin-top: 34px; }
+        .mc-brain-eyebrow {
+          font-family: var(--font-ui); font-size: 11px; font-weight: 600;
+          letter-spacing: 0.08em; text-transform: uppercase;
+          color: var(--ink-faint);
+        }
+        .mc-brain-list { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+        .mc-brain-item {
+          position: relative; padding-left: 16px;
+          display: flex; flex-direction: column; gap: 2px;
+        }
+        .mc-brain-item::before {
+          content: ""; position: absolute; left: 0; top: 0.5em;
+          width: 6px; height: 6px; border-radius: 50%;
+          background: var(--ink-faint);
+        }
+        .mc-brain-item.band-high::before { background: var(--accent); }
+        .mc-brain-summary { font-family: var(--font-ui); font-size: var(--type-ui-size); line-height: 1.5; color: var(--ink-2); }
+        .mc-brain-prov { font-family: var(--font-ui); font-size: var(--type-caption-size); color: var(--ink-faint); }
 
         .mc-moves { margin-top: 40px; }
         .mc-moves-title {
