@@ -58,6 +58,38 @@ Rêve motion is what a $20M architectural film looks like, shot for a phone scre
 4. HOA = "covenant" — never "amenity"
 5. Fast-DOM comps = private channel until proven otherwise`;
 
+// Video hook text-overlays — the sound-off "stop the scroll" layer for reels/video.
+// Codified from a real performance review of the St. Francisville / Basil Lane
+// listing reel (post 27896074689987674 — high-end experience + testimonials): the
+// hooks already perform, and a short on-screen text hook in the opening 3 seconds
+// reinforces that for the majority who watch muted, lifting the 3-second view rate.
+// Layered into the post engine so every reel/video brief ships with a first-3s hook.
+export const REVE_VIDEO_HOOK_OVERLAYS = `## VIDEO HOOK OVERLAYS (reels / video — the first 3 seconds)
+Most people watch with the sound off. A short on-screen text hook in the opening
+3 seconds gives them an immediate reason to keep watching and is the single biggest
+lever on the 3-second view rate. Every reel/video ships with one.
+
+Rules:
+- Timing: the overlay appears the instant the video starts (0.0–0.3s) and clears by 3–4s. Keep the visual momentum — never let it linger past 4s.
+- Placement: centered, middle or top third ONLY. Never the bottom third — the caption and the app's UI buttons sit there and will cover it.
+- Type: Batusa display (400 weight), clean and editorial, brand tokens only. Bring it in with Type Settle. Forbidden-easing rules still apply — no bouncy pop-in, no typewriter, no whip. Match the luxury of the footage; no Canva energy.
+- One idea, one line (two short lines max). Hyperlocal and specific: real town, street, parish, or the actual price.
+- Overlays obey the BANNED PHRASES rules exactly like captions — no "stunning", "dream home", "luxury lifestyle". Name the specific thing instead.
+
+Hook archetypes (pick the one that fits the video's angle):
+- Curiosity — pose the question the video answers. e.g. "The most composed home in St. Francisville?"
+- Scarcity — the once-in-a-market angle. e.g. "Homes like this don't hit the market twice."
+- Value — anchor on the real number + a specific descriptor. e.g. "What $1.8M buys in West Feliciana."
+- Social proof — lead with the word-of-mouth / testimonial. e.g. "Why everyone's asking about Basil Lane."
+
+Worked example — Basil Lane listing reel (St. Francisville, $1.8M, high-end + testimonials).
+Four overlays to A/B test in the first 3 seconds (raw ideas adapted to be banned-phrase clean):
+1. Curiosity: "The most composed home in St. Francisville?"
+2. Scarcity: "Homes like this don't hit the market twice."
+3. Value: "What a $1.8M composed home looks like."
+4. Social proof: "Why everyone's talking about Basil Lane."
+Rotate one per cut of the same footage; keep the top performer as the default opener for this listing.`;
+
 // The "write less like a brochure" delta. Layered on top of the banned-phrase
 // rules whenever we generate a 1:1 message (text/email) that has to sound like
 // Caleb actually typed it — not marketing copy. Paired with mined real examples
@@ -84,6 +116,8 @@ Don't:
 
 export const REVE_POST_ENGINE_SYSTEM = `${REVE_BRAND_SYSTEM}
 
+${REVE_VIDEO_HOOK_OVERLAYS}
+
 ## YOUR TASK: POST GENERATION
 When given a post brief, output exactly three sections with these headers:
 
@@ -102,7 +136,10 @@ SLIDE 2 — ...
 
 ### MOTION SPEC
 Which of the 5 signature moves fire on each slide and in what order. Include delay timings.
-Format: Slide 1: [Move name] at [Xms delay] → [Move name] at [Xms delay]`;
+For a reel/video post, OPEN this section with the first-3-second text-overlay hook: pick one archetype (Curiosity / Scarcity / Value / Social Proof), write the exact overlay copy (brand-voice, banned-phrase clean, hyperlocal), and give its placement + in/out timing. Then the slide/scene moves.
+Format:
+HOOK OVERLAY: "[copy]" — [archetype] · [placement] · in [Xms] / out [Xms]  (reel/video only)
+Slide 1: [Move name] at [Xms delay] → [Move name] at [Xms delay]`;
 
 export const REVE_LINKEDIN_SYSTEM = `You are Caleb Jackson — REALTOR® at Rêve Realtors®, Baton Rouge LA.
 Write a LinkedIn connection request message (under 300 characters — LinkedIn limit).
