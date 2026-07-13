@@ -18,6 +18,18 @@ const PLATFORMS = [
   { value: "linkedin", label: "LinkedIn" },
 ];
 
+// Keep in sync with the REEL FORMAT LIBRARY in src/lib/reve-system-prompt.ts.
+const REEL_FORMATS = [
+  { value: "auto", label: "Auto" },
+  { value: "listing_reveal", label: "Listing Reveal" },
+  { value: "transformation", label: "Transformation" },
+  { value: "wait_for_it", label: "Wait For It" },
+  { value: "market_take", label: "Market Take" },
+  { value: "client_story", label: "Client Story" },
+  { value: "list_mistakes", label: "List / Mistakes" },
+  { value: "hyperlocal_tour", label: "Hyperlocal Tour" },
+];
+
 interface Section {
   caption: string;
   slideCopy: string;
@@ -26,6 +38,13 @@ interface Section {
 
 function parseSection(text: string, heading: string, next: string): string {
   const re = new RegExp(`###\\s*${heading}\\s*([\\s\\S]*?)(?=###\\s*${next}|$)`, "i");
+  return text.match(re)?.[1]?.trim() || "";
+}
+
+// Reel headings can carry a parenthetical (e.g. "VIRALITY READ (AI estimate…)"),
+// so consume the rest of the heading line before capturing the body.
+function parseReelSection(text: string, heading: string, next: string): string {
+  const re = new RegExp(`###\\s*${heading}[^\\n]*\\n([\\s\\S]*?)(?=###\\s*${next}|$)`, "i");
   return text.match(re)?.[1]?.trim() || "";
 }
 
@@ -59,7 +78,9 @@ function CreatePost() {
   const searchParams = useSearchParams();
   const initialType = searchParams.get("type") || "just_sold";
 
+  const [mode, setMode] = useState<"post" | "reel">("post");
   const [postType, setPostType] = useState(initialType);
+  const [reelFormat, setReelFormat] = useState("auto");
   const [address, setAddress] = useState("");
   const [price, setPrice] = useState("");
   const [rawNotes, setRawNotes] = useState("");
@@ -101,16 +122,29 @@ function CreatePost() {
     motionSpec: parseSection(rawOutput, "MOTION SPEC", "ZZZNOMATCH"),
   };
 
+  const reel = {
+    hooks: parseReelSection(rawOutput, "HOOK OPTIONS", "SCRIPT"),
+    script: parseReelSection(rawOutput, "SCRIPT", "SHOT LIST"),
+    shotList: parseReelSection(rawOutput, "SHOT LIST", "CAPTION"),
+    caption: parseReelSection(rawOutput, "CAPTION", "VIRALITY READ"),
+    virality: parseReelSection(rawOutput, "VIRALITY READ", "ZZZNOMATCH"),
+  };
+
   async function generate(e: React.FormEvent) {
     e.preventDefault();
     setStreaming(true);
     setRawOutput("");
     setDone(false);
 
-    const res = await fetch("/api/posts", {
+    const endpoint = mode === "reel" ? "/api/reels" : "/api/posts";
+    const payload = mode === "reel"
+      ? { format: reelFormat, address, price: price ? parseFloat(price) : null, rawNotes, platform }
+      : { postType, address, price: price ? parseFloat(price) : null, rawNotes, platform };
+
+    const res = await fetch(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ postType, address, price: price ? parseFloat(price) : null, rawNotes, platform }),
+      body: JSON.stringify(payload),
     });
 
     const reader = res.body?.getReader();
@@ -149,29 +183,80 @@ function CreatePost() {
         {/* Form */}
         <form onSubmit={generate} className="glass-card" style={{ padding: "26px", display: "flex", flexDirection: "column", gap: "20px" }}>
           <div>
-            <label style={labelStyle}>POST TYPE</label>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "8px", marginTop: "10px" }}>
-              {POST_TYPES.map((pt) => (
+            <label style={labelStyle}>MODE</label>
+            <div style={{ display: "flex", gap: "8px", marginTop: "10px" }}>
+              {[{ value: "post", label: "Post / Carousel" }, { value: "reel", label: "Reel / Video" }].map((m) => (
                 <button
-                  key={pt.value}
+                  key={m.value}
                   type="button"
-                  onClick={() => setPostType(pt.value)}
-                  className={postType === pt.value ? "pill pill-coral" : "pill"}
+                  onClick={() => setMode(m.value as "post" | "reel")}
+                  className={mode === m.value ? "pill pill-ink" : "pill"}
                   style={{
                     fontSize: "10px",
                     letterSpacing: "0.12em",
-                    padding: "8px 6px",
+                    padding: "8px 16px",
                     cursor: "pointer",
                     fontWeight: 600,
-                    justifyContent: "center",
                     transition: "all 200ms",
                   }}
                 >
-                  {pt.label.toUpperCase()}
+                  {m.label.toUpperCase()}
                 </button>
               ))}
             </div>
           </div>
+
+          {mode === "post" ? (
+            <div>
+              <label style={labelStyle}>POST TYPE</label>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "8px", marginTop: "10px" }}>
+                {POST_TYPES.map((pt) => (
+                  <button
+                    key={pt.value}
+                    type="button"
+                    onClick={() => setPostType(pt.value)}
+                    className={postType === pt.value ? "pill pill-coral" : "pill"}
+                    style={{
+                      fontSize: "10px",
+                      letterSpacing: "0.12em",
+                      padding: "8px 6px",
+                      cursor: "pointer",
+                      fontWeight: 600,
+                      justifyContent: "center",
+                      transition: "all 200ms",
+                    }}
+                  >
+                    {pt.label.toUpperCase()}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div>
+              <label style={labelStyle}>REEL FORMAT</label>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "8px", marginTop: "10px" }}>
+                {REEL_FORMATS.map((rf) => (
+                  <button
+                    key={rf.value}
+                    type="button"
+                    onClick={() => setReelFormat(rf.value)}
+                    className={reelFormat === rf.value ? "pill pill-coral" : "pill"}
+                    style={{
+                      fontSize: "10px",
+                      letterSpacing: "0.12em",
+                      padding: "8px 6px",
+                      cursor: "pointer",
+                      fontWeight: 600,
+                      justifyContent: "center",
+                      transition: "all 200ms",
+                    }}
+                  >
+                    {rf.label.toUpperCase()}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div>
             <label style={labelStyle}>PLATFORM</label>
@@ -250,16 +335,28 @@ function CreatePost() {
         <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
           {(streaming || done) && (
             <>
-              {sections.caption && (
-                <OutputSection title="CAPTION" content={sections.caption} />
+              {mode === "reel" ? (
+                <>
+                  {reel.hooks && <OutputSection title="HOOK OPTIONS" content={reel.hooks} />}
+                  {reel.script && <OutputSection title="SCRIPT" content={reel.script} />}
+                  {reel.shotList && <OutputSection title="SHOT LIST" content={reel.shotList} />}
+                  {reel.caption && <OutputSection title="CAPTION" content={reel.caption} />}
+                  {reel.virality && <OutputSection title="VIRALITY READ" content={reel.virality} />}
+                </>
+              ) : (
+                <>
+                  {sections.caption && (
+                    <OutputSection title="CAPTION" content={sections.caption} />
+                  )}
+                  {sections.slideCopy && (
+                    <OutputSection title="SLIDE COPY" content={sections.slideCopy} />
+                  )}
+                  {sections.motionSpec && (
+                    <OutputSection title="MOTION SPEC" content={sections.motionSpec} />
+                  )}
+                </>
               )}
-              {sections.slideCopy && (
-                <OutputSection title="SLIDE COPY" content={sections.slideCopy} />
-              )}
-              {sections.motionSpec && (
-                <OutputSection title="MOTION SPEC" content={sections.motionSpec} />
-              )}
-              {streaming && !sections.caption && (
+              {streaming && !(mode === "reel" ? reel.hooks : sections.caption) && (
                 <div className="card-output" style={{ padding: "26px" }}>
                   <p style={{ fontSize: "13px", color: "var(--aire-muted-inv)", fontStyle: "italic" }}>
                     Writing...
